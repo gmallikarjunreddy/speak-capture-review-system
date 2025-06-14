@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Edit, Trash2, Users, Mic, FileText, LogOut, Search, Filter } from 'lucide-react';
 import AdminAuth from '@/components/AdminAuth';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
+import UserDetailsModal from '@/components/admin/UserDetailsModal';
 
 const Admin = () => {
   const { isAdmin, loading, adminLogin, adminLogout } = useAdminAuth();
@@ -23,6 +24,10 @@ const Admin = () => {
   const [newSentence, setNewSentence] = useState({ text: '', category: 'general' });
   const [editingSentence, setEditingSentence] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // User details modal state
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   
   // Recording filters and pagination
   const [recordingFilters, setRecordingFilters] = useState({
@@ -303,6 +308,11 @@ const Admin = () => {
     });
   };
 
+  const handleUserClick = (user: any) => {
+    setSelectedUser(user);
+    setIsUserModalOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 flex items-center justify-center">
@@ -525,8 +535,14 @@ const Admin = () => {
                     </TableHeader>
                     <TableBody>
                       {users.map((user) => (
-                        <TableRow key={user.id}>
-                          <TableCell>{user.full_name || 'N/A'}</TableCell>
+                        <TableRow 
+                          key={user.id} 
+                          className="cursor-pointer hover:bg-blue-50"
+                          onClick={() => handleUserClick(user)}
+                        >
+                          <TableCell className="text-blue-600 hover:text-blue-800">
+                            {user.full_name || 'N/A'}
+                          </TableCell>
                           <TableCell>{user.email || 'N/A'}</TableCell>
                           <TableCell>{user.phone || 'N/A'}</TableCell>
                           <TableCell>{user.state || 'N/A'}</TableCell>
@@ -758,6 +774,16 @@ const Admin = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* User Details Modal */}
+      <UserDetailsModal
+        user={selectedUser}
+        isOpen={isUserModalOpen}
+        onClose={() => {
+          setIsUserModalOpen(false);
+          setSelectedUser(null);
+        }}
+      />
     </div>
   );
 };
