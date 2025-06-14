@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -56,7 +55,7 @@ const Admin = () => {
       }
 
       console.log('Fetching users...');
-      // Fetch users with profiles
+      // Fetch users with profiles - simplified query
       const { data: usersData, error: usersError } = await supabase
         .from('user_profiles')
         .select('*')
@@ -75,14 +74,10 @@ const Admin = () => {
       }
 
       console.log('Fetching recordings...');
-      // Fetch recordings with related data
+      // Fetch recordings with a simpler approach - first get recordings, then match with user data
       const { data: recordingsData, error: recordingsError } = await supabase
         .from('recordings')
-        .select(`
-          *,
-          user_profiles!recordings_user_id_fkey(full_name, email),
-          sentences(text, category)
-        `)
+        .select('*')
         .order('recorded_at', { ascending: false });
       
       if (recordingsError) {
@@ -94,7 +89,42 @@ const Admin = () => {
         });
       } else {
         console.log('Recordings fetched:', recordingsData?.length || 0);
-        setRecordings(recordingsData || []);
+        
+        // Now enrich recordings with user and sentence data
+        const enrichedRecordings = await Promise.all(
+          (recordingsData || []).map(async (recording) => {
+            let userProfile = null;
+            let sentence = null;
+            
+            // Fetch user profile if user_id exists
+            if (recording.user_id) {
+              const { data: userData } = await supabase
+                .from('user_profiles')
+                .select('full_name, email')
+                .eq('id', recording.user_id)
+                .single();
+              userProfile = userData;
+            }
+            
+            // Fetch sentence if sentence_id exists
+            if (recording.sentence_id) {
+              const { data: sentenceData } = await supabase
+                .from('sentences')
+                .select('text, category')
+                .eq('id', recording.sentence_id)
+                .single();
+              sentence = sentenceData;
+            }
+            
+            return {
+              ...recording,
+              user_profiles: userProfile,
+              sentences: sentence
+            };
+          })
+        );
+        
+        setRecordings(enrichedRecordings);
       }
     } catch (error) {
       console.error('Unexpected error fetching data:', error);
