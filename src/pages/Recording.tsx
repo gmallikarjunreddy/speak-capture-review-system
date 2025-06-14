@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -139,13 +138,14 @@ const Recording = () => {
     if (!audioBlob || !user || !sessionId) return;
     
     try {
-      // Upload audio file
-      const fileName = `recording_${user.id}_${Date.now()}.webm`;
+      // Upload audio file with user folder structure
+      const fileName = `${user.id}/recording_${Date.now()}.webm`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('recordings')
         .upload(fileName, audioBlob);
       
       if (uploadError) {
+        console.error('Upload error:', uploadError);
         toast({
           title: "Upload Error",
           description: "Failed to upload recording",
@@ -167,6 +167,7 @@ const Recording = () => {
         });
       
       if (dbError) {
+        console.error('Database error:', dbError);
         toast({
           title: "Database Error",
           description: "Failed to save recording",
@@ -205,6 +206,7 @@ const Recording = () => {
         navigate('/dashboard');
       }
     } catch (error) {
+      console.error('Accept recording error:', error);
       toast({
         title: "Error",
         description: "Something went wrong",
