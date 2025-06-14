@@ -28,6 +28,7 @@ const Recording = () => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [completedCount, setCompletedCount] = useState(0);
+  const [rejectedCount, setRejectedCount] = useState(0);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -134,12 +135,16 @@ const Recording = () => {
     }
   };
 
-  const acceptRecording = async () => {
+  const saveRecording = async (status: 'accepted' | 'rejected') => {
     if (!audioBlob || !user || !sessionId) return;
     
     try {
-      // Upload audio file with user folder structure
-      const fileName = `${user.id}/recording_${Date.now()}.webm`;
+      // Generate appropriate filename based on status
+      const currentRejectedCount = status === 'rejected' ? rejectedCount + 1 : rejectedCount;
+      const fileName = status === 'accepted' 
+        ? `${user.id}/recording_${Date.now()}.webm`
+        : `${user.id}/${user.id}_R_${currentRejectedCount}.webm`;
+      
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('recordings')
         .upload(fileName, audioBlob);
@@ -151,7 +156,7 @@ const Recording = () => {
           description: "Failed to upload recording",
           variant: "destructive"
         });
-        return;
+        return false;
       }
       
       // Save recording metadata
@@ -161,9 +166,9 @@ const Recording = () => {
           user_id: user.id,
           sentence_id: sentences[currentIndex].id,
           audio_url: uploadData.path,
-          status: 'accepted',
-          attempt_number: 1,
-          duration_seconds: 0 // You could calculate this
+          status: status,
+          attempt_number: status === 'rejected' ? currentRejectedCount : 1,
+          duration_seconds: 0
         });
       
       if (dbError) {
@@ -173,54 +178,69 @@ const Recording = () => {
           description: "Failed to save recording",
           variant: "destructive"
         });
-        return;
+        return false;
       }
       
-      // Update session
-      const newCompletedCount = completedCount + 1;
-      await supabase
-        .from('recording_sessions')
-        .update({ 
-          completed_sentences: newCompletedCount,
-          status: newCompletedCount >= sentences.length ? 'completed' : 'in_progress',
-          completed_at: newCompletedCount >= sentences.length ? new Date().toISOString() : null
-        })
-        .eq('id', sessionId);
-      
-      setCompletedCount(newCompletedCount);
-      
-      toast({
-        title: "Recording Accepted",
-        description: "Moving to next sentence"
-      });
-      
-      // Move to next sentence or complete
-      if (currentIndex + 1 < sentences.length) {
-        setCurrentIndex(currentIndex + 1);
-        resetRecording();
-      } else {
-        toast({
-          title: "Session Complete!",
-          description: "All recordings completed successfully"
-        });
-        navigate('/dashboard');
+      if (status === 'rejected') {
+        setRejectedCount(currentRejectedCount);
       }
+      
+      return true;
     } catch (error) {
-      console.error('Accept recording error:', error);
+      console.error('Save recording error:', error);
       toast({
         title: "Error",
         description: "Something went wrong",
         variant: "destructive"
       });
+      return false;
     }
   };
 
-  const rejectRecording = () => {
-    resetRecording();
+  const acceptRecording = async () => {
+    const success = await saveRecording('accepted');
+    if (!success) return;
+    
+    // Update session
+    const newCompletedCount = completedCount + 1;
+    await supabase
+      .from('recording_sessions')
+      .update({ 
+        completed_sentences: newCompletedCount,
+        status: newCompletedCount >= sentences.length ? 'completed' : 'in_progress',
+        completed_at: newCompletedCount >= sentences.length ? new Date().toISOString() : null
+      })
+      .eq('id', sessionId);
+    
+    setCompletedCount(newCompletedCount);
+    
     toast({
-      title: "Recording Rejected",
-      description: "Try recording again"
+      title: "Recording Accepted",
+      description: "Moving to next sentence"
     });
+    
+    // Move to next sentence or complete
+    if (currentIndex + 1 < sentences.length) {
+      setCurrentIndex(currentIndex + 1);
+      resetRecording();
+    } else {
+      toast({
+        title: "Session Complete!",
+        description: "All recordings completed successfully"
+      });
+      navigate('/dashboard');
+    }
+  };
+
+  const rejectRecording = async () => {
+    const success = await saveRecording('rejected');
+    if (success) {
+      toast({
+        title: "Recording Rejected",
+        description: "Recording saved as rejected. Try recording again"
+      });
+    }
+    resetRecording();
   };
 
   const resetRecording = () => {
