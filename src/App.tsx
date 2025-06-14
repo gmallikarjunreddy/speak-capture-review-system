@@ -67,11 +67,8 @@ const AppRoutes = () => {
           <Recording />
         </ProtectedRoute>
       } />
-      <Route path="/admin" element={
-        <ProtectedRoute>
-          <Admin />
-        </ProtectedRoute>
-      } />
+      {/* Admin route is now independent of regular auth */}
+      <Route path="/admin" element={<Admin />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

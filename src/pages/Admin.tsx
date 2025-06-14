@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -10,9 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Edit, Trash2, Users, Mic, FileText } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, Mic, FileText, LogOut } from 'lucide-react';
+import AdminAuth from '@/components/AdminAuth';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
 
 const Admin = () => {
+  const { isAdmin, loading, adminLogin, adminLogout } = useAdminAuth();
   const [sentences, setSentences] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [recordings, setRecordings] = useState<any[]>([]);
@@ -23,8 +25,10 @@ const Admin = () => {
   const categories = ['general', 'introduction', 'instruction', 'technology', 'personal', 'education', 'arts', 'health', 'travel'];
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (isAdmin) {
+      fetchData();
+    }
+  }, [isAdmin]);
 
   const fetchData = async () => {
     // Fetch sentences
@@ -135,12 +139,42 @@ const Admin = () => {
     }
   };
 
+  const handleAdminLogout = () => {
+    adminLogout();
+    toast({
+      title: "Logged Out",
+      description: "Admin session ended"
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-red-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return <AdminAuth onAdminLogin={adminLogin} />;
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Panel</h1>
-          <p className="text-gray-600">Manage sentences, users, and recordings</p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Control Panel</h1>
+            <p className="text-gray-600">Manage sentences, users, and recordings</p>
+          </div>
+          <Button 
+            onClick={handleAdminLogout}
+            variant="outline"
+            className="border-red-300 text-red-600 hover:bg-red-50"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
+          </Button>
         </div>
 
         <Tabs defaultValue="sentences" className="space-y-6">
