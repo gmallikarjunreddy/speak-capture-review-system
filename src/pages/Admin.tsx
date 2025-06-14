@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -20,44 +21,91 @@ const Admin = () => {
   const [recordings, setRecordings] = useState<any[]>([]);
   const [newSentence, setNewSentence] = useState({ text: '', category: 'general' });
   const [editingSentence, setEditingSentence] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
   const categories = ['general', 'introduction', 'instruction', 'technology', 'personal', 'education', 'arts', 'health', 'travel'];
 
   useEffect(() => {
     if (isAdmin) {
+      console.log('Admin authenticated, fetching data...');
       fetchData();
     }
   }, [isAdmin]);
 
   const fetchData = async () => {
-    // Fetch sentences
-    const { data: sentencesData } = await supabase
-      .from('sentences')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (sentencesData) setSentences(sentencesData);
+    setIsLoading(true);
+    try {
+      console.log('Fetching sentences...');
+      // Fetch sentences
+      const { data: sentencesData, error: sentencesError } = await supabase
+        .from('sentences')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (sentencesError) {
+        console.error('Error fetching sentences:', sentencesError);
+        toast({
+          title: "Error",
+          description: "Failed to fetch sentences",
+          variant: "destructive"
+        });
+      } else {
+        console.log('Sentences fetched:', sentencesData?.length || 0);
+        setSentences(sentencesData || []);
+      }
 
-    // Fetch users with profiles
-    const { data: usersData } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (usersData) setUsers(usersData);
+      console.log('Fetching users...');
+      // Fetch users with profiles
+      const { data: usersData, error: usersError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (usersError) {
+        console.error('Error fetching users:', usersError);
+        toast({
+          title: "Error",
+          description: "Failed to fetch users",
+          variant: "destructive"
+        });
+      } else {
+        console.log('Users fetched:', usersData?.length || 0);
+        setUsers(usersData || []);
+      }
 
-    // Fetch recordings with related data
-    const { data: recordingsData } = await supabase
-      .from('recordings')
-      .select(`
-        *,
-        user_profiles!recordings_user_id_fkey(full_name, email),
-        sentences(text, category)
-      `)
-      .order('recorded_at', { ascending: false });
-    
-    if (recordingsData) setRecordings(recordingsData);
+      console.log('Fetching recordings...');
+      // Fetch recordings with related data
+      const { data: recordingsData, error: recordingsError } = await supabase
+        .from('recordings')
+        .select(`
+          *,
+          user_profiles!recordings_user_id_fkey(full_name, email),
+          sentences(text, category)
+        `)
+        .order('recorded_at', { ascending: false });
+      
+      if (recordingsError) {
+        console.error('Error fetching recordings:', recordingsError);
+        toast({
+          title: "Error",
+          description: "Failed to fetch recordings",
+          variant: "destructive"
+        });
+      } else {
+        console.log('Recordings fetched:', recordingsData?.length || 0);
+        setRecordings(recordingsData || []);
+      }
+    } catch (error) {
+      console.error('Unexpected error fetching data:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const addSentence = async () => {
@@ -75,6 +123,7 @@ const Admin = () => {
       .insert([newSentence]);
 
     if (error) {
+      console.error('Error adding sentence:', error);
       toast({
         title: "Error",
         description: "Failed to add sentence",
@@ -103,6 +152,7 @@ const Admin = () => {
       .eq('id', editingSentence.id);
 
     if (error) {
+      console.error('Error updating sentence:', error);
       toast({
         title: "Error",
         description: "Failed to update sentence",
@@ -125,6 +175,7 @@ const Admin = () => {
       .eq('id', id);
 
     if (error) {
+      console.error('Error deleting sentence:', error);
       toast({
         title: "Error",
         description: "Failed to delete sentence",
@@ -177,19 +228,26 @@ const Admin = () => {
           </Button>
         </div>
 
+        {isLoading && (
+          <div className="text-center py-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
+            <p className="mt-2 text-gray-600">Loading data...</p>
+          </div>
+        )}
+
         <Tabs defaultValue="sentences" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 max-w-md">
             <TabsTrigger value="sentences">
               <FileText className="w-4 h-4 mr-2" />
-              Sentences
+              Sentences ({sentences.length})
             </TabsTrigger>
             <TabsTrigger value="users">
               <Users className="w-4 h-4 mr-2" />
-              Users
+              Users ({users.length})
             </TabsTrigger>
             <TabsTrigger value="recordings">
               <Mic className="w-4 h-4 mr-2" />
-              Recordings
+              Recordings ({recordings.length})
             </TabsTrigger>
           </TabsList>
 
@@ -229,7 +287,7 @@ const Admin = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={addSentence}>
+                <Button onClick={addSentence} disabled={isLoading}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add Sentence
                 </Button>
@@ -242,92 +300,99 @@ const Admin = () => {
                 <CardTitle>Manage Sentences ({sentences.length})</CardTitle>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Text</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sentences.map((sentence) => (
-                      <TableRow key={sentence.id}>
-                        <TableCell className="max-w-md">
-                          {editingSentence?.id === sentence.id ? (
-                            <Textarea
-                              value={editingSentence.text}
-                              onChange={(e) => setEditingSentence({...editingSentence, text: e.target.value})}
-                              className="bg-white"
-                            />
-                          ) : (
-                            sentence.text
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {editingSentence?.id === sentence.id ? (
-                            <Select 
-                              value={editingSentence.category} 
-                              onValueChange={(value) => setEditingSentence({...editingSentence, category: value})}
-                            >
-                              <SelectTrigger className="bg-white">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {categories.map((category) => (
-                                  <SelectItem key={category} value={category}>
-                                    {category.charAt(0).toUpperCase() + category.slice(1)}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            sentence.category
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            sentence.is_active 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {sentence.is_active ? 'Active' : 'Inactive'}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            {editingSentence?.id === sentence.id ? (
-                              <>
-                                <Button size="sm" onClick={updateSentence}>Save</Button>
-                                <Button size="sm" variant="outline" onClick={() => setEditingSentence(null)}>
-                                  Cancel
-                                </Button>
-                              </>
-                            ) : (
-                              <>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => setEditingSentence(sentence)}
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => deleteSentence(sentence.id)}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
+                {sentences.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">No sentences found</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Text</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {sentences.map((sentence) => (
+                        <TableRow key={sentence.id}>
+                          <TableCell className="max-w-md">
+                            {editingSentence?.id === sentence.id ? (
+                              <Textarea
+                                value={editingSentence.text}
+                                onChange={(e) => setEditingSentence({...editingSentence, text: e.target.value})}
+                                className="bg-white"
+                              />
+                            ) : (
+                              sentence.text
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {editingSentence?.id === sentence.id ? (
+                              <Select 
+                                value={editingSentence.category} 
+                                onValueChange={(value) => setEditingSentence({...editingSentence, category: value})}
+                              >
+                                <SelectTrigger className="bg-white">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {categories.map((category) => (
+                                    <SelectItem key={category} value={category}>
+                                      {category.charAt(0).toUpperCase() + category.slice(1)}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              sentence.category
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              sentence.is_active 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {sentence.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex space-x-2">
+                              {editingSentence?.id === sentence.id ? (
+                                <>
+                                  <Button size="sm" onClick={updateSentence} disabled={isLoading}>
+                                    Save
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => setEditingSentence(null)}>
+                                    Cancel
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => setEditingSentence(sentence)}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => deleteSentence(sentence.id)}
+                                    disabled={isLoading}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -339,32 +404,36 @@ const Admin = () => {
                 <CardTitle>Registered Users ({users.length})</CardTitle>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>State</TableHead>
-                      <TableHead>Mother Tongue</TableHead>
-                      <TableHead>Joined</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>{user.full_name || 'N/A'}</TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>{user.phone || 'N/A'}</TableCell>
-                        <TableCell>{user.state || 'N/A'}</TableCell>
-                        <TableCell>{user.mother_tongue || 'N/A'}</TableCell>
-                        <TableCell>
-                          {new Date(user.created_at).toLocaleDateString()}
-                        </TableCell>
+                {users.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">No users found</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead>State</TableHead>
+                        <TableHead>Mother Tongue</TableHead>
+                        <TableHead>Joined</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {users.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell>{user.full_name || 'N/A'}</TableCell>
+                          <TableCell>{user.email || 'N/A'}</TableCell>
+                          <TableCell>{user.phone || 'N/A'}</TableCell>
+                          <TableCell>{user.state || 'N/A'}</TableCell>
+                          <TableCell>{user.mother_tongue || 'N/A'}</TableCell>
+                          <TableCell>
+                            {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -376,44 +445,52 @@ const Admin = () => {
                 <CardTitle>Audio Recordings ({recordings.length})</CardTitle>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Sentence</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Recorded At</TableHead>
-                      <TableHead>Duration</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {recordings.map((recording) => (
-                      <TableRow key={recording.id}>
-                        <TableCell>{recording.user_profiles?.full_name || 'Unknown'}</TableCell>
-                        <TableCell className="max-w-md truncate">
-                          {recording.sentences?.text || 'Deleted sentence'}
-                        </TableCell>
-                        <TableCell>{recording.sentences?.category || 'N/A'}</TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            recording.status === 'accepted' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {recording.status}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(recording.recorded_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          {recording.duration_seconds ? `${recording.duration_seconds}s` : 'N/A'}
-                        </TableCell>
+                {recordings.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">No recordings found</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>Sentence</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Recorded At</TableHead>
+                        <TableHead>Duration</TableHead>
+                        <TableHead>Audio ID</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {recordings.map((recording) => (
+                        <TableRow key={recording.id}>
+                          <TableCell>{recording.user_profiles?.full_name || 'Unknown'}</TableCell>
+                          <TableCell className="max-w-md truncate">
+                            {recording.sentences?.text || 'Deleted sentence'}
+                          </TableCell>
+                          <TableCell>{recording.sentences?.category || 'N/A'}</TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              recording.status === 'accepted' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {recording.status}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {recording.recorded_at ? new Date(recording.recorded_at).toLocaleDateString() : 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            {recording.duration_seconds ? `${recording.duration_seconds}s` : 'N/A'}
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {recording.audio_url || 'N/A'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
