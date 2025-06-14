@@ -9,7 +9,137 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      recording_sessions: {
+        Row: {
+          completed_at: string | null
+          completed_sentences: number | null
+          id: string
+          started_at: string | null
+          status: string | null
+          total_sentences: number | null
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_sentences?: number | null
+          id?: string
+          started_at?: string | null
+          status?: string | null
+          total_sentences?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          completed_sentences?: number | null
+          id?: string
+          started_at?: string | null
+          status?: string | null
+          total_sentences?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      recordings: {
+        Row: {
+          attempt_number: number | null
+          audio_url: string
+          duration_seconds: number | null
+          id: string
+          recorded_at: string | null
+          sentence_id: string | null
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          attempt_number?: number | null
+          audio_url: string
+          duration_seconds?: number | null
+          id?: string
+          recorded_at?: string | null
+          sentence_id?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          attempt_number?: number | null
+          audio_url?: string
+          duration_seconds?: number | null
+          id?: string
+          recorded_at?: string | null
+          sentence_id?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recordings_sentence_id_fkey"
+            columns: ["sentence_id"]
+            isOneToOne: false
+            referencedRelation: "sentences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sentences: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          text: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          text: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          text?: string
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          mother_tongue: string | null
+          phone: string | null
+          state: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+          mother_tongue?: string | null
+          phone?: string | null
+          state?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          mother_tongue?: string | null
+          phone?: string | null
+          state?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
