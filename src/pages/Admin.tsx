@@ -7,9 +7,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Edit, Trash2, Users, Mic, FileText, LogOut } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, Mic, FileText, LogOut, Search, Filter } from 'lucide-react';
 import AdminAuth from '@/components/AdminAuth';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 
@@ -18,9 +19,22 @@ const Admin = () => {
   const [sentences, setSentences] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [recordings, setRecordings] = useState<any[]>([]);
+  const [filteredRecordings, setFilteredRecordings] = useState<any[]>([]);
   const [newSentence, setNewSentence] = useState({ text: '', category: 'general' });
   const [editingSentence, setEditingSentence] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Recording filters and pagination
+  const [recordingFilters, setRecordingFilters] = useState({
+    status: 'all',
+    category: 'all',
+    search: '',
+    sortBy: 'recorded_at',
+    sortOrder: 'desc'
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordingsPerPage = 10;
+  
   const { toast } = useToast();
 
   const categories = ['general', 'introduction', 'instruction', 'technology', 'personal', 'education', 'arts', 'health', 'travel'];
@@ -31,6 +45,67 @@ const Admin = () => {
       fetchData();
     }
   }, [isAdmin]);
+
+  useEffect(() => {
+    // Apply filters whenever recordings or filters change
+    applyFilters();
+  }, [recordings, recordingFilters]);
+
+  const applyFilters = () => {
+    let filtered = [...recordings];
+
+    // Filter by status
+    if (recordingFilters.status !== 'all') {
+      filtered = filtered.filter(recording => recording.status === recordingFilters.status);
+    }
+
+    // Filter by category
+    if (recordingFilters.category !== 'all') {
+      filtered = filtered.filter(recording => recording.sentences?.category === recordingFilters.category);
+    }
+
+    // Filter by search term
+    if (recordingFilters.search) {
+      const searchTerm = recordingFilters.search.toLowerCase();
+      filtered = filtered.filter(recording => 
+        recording.user_profiles?.full_name?.toLowerCase().includes(searchTerm) ||
+        recording.user_profiles?.email?.toLowerCase().includes(searchTerm) ||
+        recording.sentences?.text?.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    // Sort recordings
+    filtered.sort((a, b) => {
+      let aValue = a[recordingFilters.sortBy];
+      let bValue = b[recordingFilters.sortBy];
+
+      // Handle nested properties
+      if (recordingFilters.sortBy === 'user_name') {
+        aValue = a.user_profiles?.full_name || '';
+        bValue = b.user_profiles?.full_name || '';
+      }
+
+      if (recordingFilters.sortBy === 'sentence_text') {
+        aValue = a.sentences?.text || '';
+        bValue = b.sentences?.text || '';
+      }
+
+      if (recordingFilters.sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+
+    setFilteredRecordings(filtered);
+    setCurrentPage(1); // Reset to first page when filters change
+  };
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredRecordings.length / recordingsPerPage);
+  const startIndex = (currentPage - 1) * recordingsPerPage;
+  const endIndex = startIndex + recordingsPerPage;
+  const currentRecordings = filteredRecordings.slice(startIndex, endIndex);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -469,57 +544,214 @@ const Admin = () => {
           </TabsContent>
 
           {/* Recordings Tab */}
-          <TabsContent value="recordings">
+          <TabsContent value="recordings" className="space-y-6">
+            {/* Filters Card */}
             <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle>Audio Recordings ({recordings.length})</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Filter className="w-5 h-5" />
+                  Filter & Search Recordings
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Search */}
+                  <div className="space-y-2">
+                    <Label htmlFor="search">Search</Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="search"
+                        placeholder="Search by user, email, or sentence..."
+                        value={recordingFilters.search}
+                        onChange={(e) => setRecordingFilters({...recordingFilters, search: e.target.value})}
+                        className="pl-10 bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Status Filter */}
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <Select 
+                      value={recordingFilters.status} 
+                      onValueChange={(value) => setRecordingFilters({...recordingFilters, status: value})}
+                    >
+                      <SelectTrigger className="bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="accepted">Accepted</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Category Filter */}
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    <Select 
+                      value={recordingFilters.category} 
+                      onValueChange={(value) => setRecordingFilters({...recordingFilters, category: value})}
+                    >
+                      <SelectTrigger className="bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Categories</SelectItem>
+                        {categories.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category.charAt(0).toUpperCase() + category.slice(1)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Sort By */}
+                  <div className="space-y-2">
+                    <Label>Sort By</Label>
+                    <Select 
+                      value={recordingFilters.sortBy} 
+                      onValueChange={(value) => setRecordingFilters({...recordingFilters, sortBy: value})}
+                    >
+                      <SelectTrigger className="bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="recorded_at">Date Recorded</SelectItem>
+                        <SelectItem value="user_name">User Name</SelectItem>
+                        <SelectItem value="status">Status</SelectItem>
+                        <SelectItem value="duration_seconds">Duration</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-600">
+                    Showing {currentRecordings.length} of {filteredRecordings.length} recordings
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setRecordingFilters({
+                      status: 'all',
+                      category: 'all',
+                      search: '',
+                      sortBy: 'recorded_at',
+                      sortOrder: 'desc'
+                    })}
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Recordings Table */}
+            <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle>Audio Recordings ({filteredRecordings.length} filtered)</CardTitle>
               </CardHeader>
               <CardContent>
-                {recordings.length === 0 ? (
+                {currentRecordings.length === 0 ? (
                   <p className="text-center text-gray-500 py-8">No recordings found</p>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>User</TableHead>
-                        <TableHead>Sentence</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Recorded At</TableHead>
-                        <TableHead>Duration</TableHead>
-                        <TableHead>Audio ID</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {recordings.map((recording) => (
-                        <TableRow key={recording.id}>
-                          <TableCell>{recording.user_profiles?.full_name || 'Unknown'}</TableCell>
-                          <TableCell className="max-w-md truncate">
-                            {recording.sentences?.text || 'Deleted sentence'}
-                          </TableCell>
-                          <TableCell>{recording.sentences?.category || 'N/A'}</TableCell>
-                          <TableCell>
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              recording.status === 'accepted' 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {recording.status}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {recording.recorded_at ? new Date(recording.recorded_at).toLocaleDateString() : 'N/A'}
-                          </TableCell>
-                          <TableCell>
-                            {recording.duration_seconds ? `${recording.duration_seconds}s` : 'N/A'}
-                          </TableCell>
-                          <TableCell className="font-mono text-sm">
-                            {recording.audio_url || 'N/A'}
-                          </TableCell>
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>User</TableHead>
+                          <TableHead>Sentence</TableHead>
+                          <TableHead>Category</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Recorded At</TableHead>
+                          <TableHead>Duration</TableHead>
+                          <TableHead>Audio ID</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {currentRecordings.map((recording) => (
+                          <TableRow key={recording.id}>
+                            <TableCell>{recording.user_profiles?.full_name || 'Unknown'}</TableCell>
+                            <TableCell className="max-w-md truncate">
+                              {recording.sentences?.text || 'Deleted sentence'}
+                            </TableCell>
+                            <TableCell>{recording.sentences?.category || 'N/A'}</TableCell>
+                            <TableCell>
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                recording.status === 'accepted' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {recording.status}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              {recording.recorded_at ? new Date(recording.recorded_at).toLocaleDateString() : 'N/A'}
+                            </TableCell>
+                            <TableCell>
+                              {recording.duration_seconds ? `${recording.duration_seconds}s` : 'N/A'}
+                            </TableCell>
+                            <TableCell className="font-mono text-sm">
+                              {recording.audio_url || 'N/A'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div className="mt-6 flex justify-center">
+                        <Pagination>
+                          <PaginationContent>
+                            <PaginationItem>
+                              <PaginationPrevious 
+                                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                                className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                              />
+                            </PaginationItem>
+                            
+                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                              let pageNum;
+                              if (totalPages <= 5) {
+                                pageNum = i + 1;
+                              } else if (currentPage <= 3) {
+                                pageNum = i + 1;
+                              } else if (currentPage >= totalPages - 2) {
+                                pageNum = totalPages - 4 + i;
+                              } else {
+                                pageNum = currentPage - 2 + i;
+                              }
+                              
+                              return (
+                                <PaginationItem key={pageNum}>
+                                  <PaginationLink
+                                    onClick={() => setCurrentPage(pageNum)}
+                                    isActive={currentPage === pageNum}
+                                    className="cursor-pointer"
+                                  >
+                                    {pageNum}
+                                  </PaginationLink>
+                                </PaginationItem>
+                              );
+                            })}
+                            
+                            <PaginationItem>
+                              <PaginationNext 
+                                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                                className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                              />
+                            </PaginationItem>
+                          </PaginationContent>
+                        </Pagination>
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
