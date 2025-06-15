@@ -137,6 +137,7 @@ const Admin = () => {
           variant: "destructive"
         });
       } else {
+        console.log('All users fetched:', usersData);
         setUsers(usersData || []);
       }
 
@@ -453,11 +454,21 @@ const Admin = () => {
           <TabsContent value="users">
             <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle>Registered Users ({users.length})</CardTitle>
+                <CardTitle>
+                  Registered Users ({users.length})
+                </CardTitle>
+                <div className="mt-2 text-xs text-gray-400">
+                  {/* Debug info */}
+                  {users.length === 0
+                    ? 'No users found. (Check browser console for the users array!)'
+                    : `${users.length} users loaded. (Check browser console for full users array!)`}
+                </div>
               </CardHeader>
               <CardContent>
                 {users.length === 0 ? (
-                  <p className="text-center text-gray-500 py-8">No users found</p>
+                  <p className="text-center text-gray-500 py-8">
+                    No users found
+                  </p>
                 ) : (
                   <Table>
                     <TableHeader>
@@ -471,9 +482,9 @@ const Admin = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {users.map((user) => (
+                      {users.map((user, i) => (
                         <TableRow 
-                          key={user.id} 
+                          key={user.id || i}
                           className="cursor-pointer hover:bg-blue-50"
                           onClick={() => handleUserClick(user)}
                         >
