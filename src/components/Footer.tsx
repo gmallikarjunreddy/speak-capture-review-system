@@ -1,4 +1,3 @@
-
 import { Mic } from 'lucide-react';
 export const Footer = () => {
   return <footer className="bg-gray-900 text-white py-12">
@@ -13,7 +12,7 @@ export const Footer = () => {
           Building the future of speech technology, one voice at a time.
         </p>
         <div className="flex justify-center items-center space-x-8 w-full">
-          <img src="/lovable-uploads/6fab767f-d57d-48e1-8938-bf7e64722a11.png" alt="ICFAI Foundation for Higher Education Logo" className="max-h-16 w-auto object-contain bg-white p-2 rounded-md" />
+          <img alt="ICFAI Foundation for Higher Education Logo" className="max-h-16 w-auto object-contain bg-white p-2 rounded-md" src="https://www.ifheindia.org/assets/img/Logo.svg" />
           <img src="/lovable-uploads/fd3b9f3a-e980-4235-8761-1a5d1c8de3d1.png" alt="aiTe Logo" className="max-h-16 w-auto object-contain bg-white p-2 rounded-md" />
         </div>
       </div>
