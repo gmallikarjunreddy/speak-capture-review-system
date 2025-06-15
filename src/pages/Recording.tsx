@@ -41,6 +41,8 @@ const Recording = () => {
     acceptRecording,
     rejectRecording,
     skipSentence,
+    previousSentence,
+    isPreviousDisabled,
   } = useRecording(sentences);
 
   if (isLoading) {
@@ -75,6 +77,8 @@ const Recording = () => {
           rejectRecording={rejectRecording}
           skipSentence={skipSentence}
           isSkipDisabled={currentIndex + 1 >= sentences.length}
+          previousSentence={previousSentence}
+          isPreviousDisabled={isPreviousDisabled}
         />
       </div>
     </div>
@@ -82,3 +86,4 @@ const Recording = () => {
 };
 
 export default Recording;
+

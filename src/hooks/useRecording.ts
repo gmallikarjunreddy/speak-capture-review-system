@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -258,6 +257,13 @@ export const useRecording = (sentences: any[]) => {
     }
   };
 
+  const previousSentence = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+      resetRecording();
+    }
+  };
+
   return {
     currentIndex,
     isRecording,
@@ -270,5 +276,7 @@ export const useRecording = (sentences: any[]) => {
     acceptRecording,
     rejectRecording,
     skipSentence,
+    previousSentence,
+    isPreviousDisabled: currentIndex === 0,
   };
 };

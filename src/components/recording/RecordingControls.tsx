@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Mic, Square, Play, Check, RotateCcw, SkipForward } from 'lucide-react';
+import { Mic, Square, Play, Check, RotateCcw, SkipForward, SkipBack } from 'lucide-react';
 
 interface RecordingControlsProps {
   isRecording: boolean;
@@ -16,6 +16,8 @@ interface RecordingControlsProps {
   rejectRecording: () => void;
   skipSentence: () => void;
   isSkipDisabled: boolean;
+  previousSentence: () => void;
+  isPreviousDisabled: boolean;
 }
 
 export const RecordingControls = ({
@@ -30,6 +32,8 @@ export const RecordingControls = ({
   rejectRecording,
   skipSentence,
   isSkipDisabled,
+  previousSentence,
+  isPreviousDisabled,
 }: RecordingControlsProps) => {
   return (
     <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
@@ -84,7 +88,15 @@ export const RecordingControls = ({
             </div>
           )}
 
-          <div className="pt-4 border-t">
+          <div className="pt-4 border-t flex justify-center items-center space-x-4">
+            <Button
+              variant="ghost"
+              onClick={previousSentence}
+              disabled={isPreviousDisabled}
+            >
+              <SkipBack className="w-4 h-4 mr-2" />
+              Previous Sentence
+            </Button>
             <Button
               variant="ghost"
               onClick={skipSentence}
@@ -99,3 +111,4 @@ export const RecordingControls = ({
     </Card>
   );
 };
+
