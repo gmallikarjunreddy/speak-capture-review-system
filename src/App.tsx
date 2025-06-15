@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +11,7 @@ import ProfileSetup from "./pages/ProfileSetup";
 import Recording from "./pages/Recording";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
+import AdminUsers from "./pages/AdminUsers";
 
 const queryClient = new QueryClient();
 
@@ -67,8 +67,8 @@ const AppRoutes = () => {
           <Recording />
         </ProtectedRoute>
       } />
-      {/* Admin route is now independent of regular auth */}
       <Route path="/admin" element={<Admin />} />
+      <Route path="/admin/users" element={<AdminUsers />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

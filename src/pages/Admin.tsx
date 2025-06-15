@@ -112,7 +112,20 @@ const Admin = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <AdminHeader adminLogout={adminLogout} usersCount={users.length} sentencesCount={sentences.length} recordingsCount={recordings.length} />
+        <AdminHeader 
+          adminLogout={adminLogout} 
+          usersCount={users.length} 
+          sentencesCount={sentences.length} 
+          recordingsCount={recordings.length} 
+        />
+        <div className="mb-6">
+          <a
+            href="/admin/users"
+            className="inline-block text-sm text-blue-700 border hover:border-blue-200 rounded px-3 py-1 bg-blue-50 hover:bg-blue-100 transition"
+          >
+            Go to All Users Management
+          </a>
+        </div>
         <Tabs defaultValue="sentences" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 max-w-md">
             <TabsTrigger value="sentences">Sentences ({sentences.length})</TabsTrigger>
