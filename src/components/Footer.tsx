@@ -13,7 +13,7 @@ export const Footer = () => {
         </p>
         <div className="flex justify-center items-center space-x-8 w-full">
           <img alt="ICFAI Foundation for Higher Education Logo" className="max-h-16 w-auto object-contain bg-white p-2 rounded-md" src="https://www.ifheindia.org/assets/img/Logo.svg" />
-          <img src="/lovable-uploads/fd3b9f3a-e980-4235-8761-1a5d1c8de3d1.png" alt="aiTe Logo" className="max-h-16 w-auto object-contain bg-white p-2 rounded-md" />
+          <img alt="aiTe Logo" className="max-h-16 w-auto object-contain bg-white p-2 rounded-md" src="https://www.ifheindia.org/IcfaiTechassets/img/IcfaiTech-logo.svg" />
         </div>
       </div>
     </footer>;
