@@ -111,18 +111,14 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
   };
 
   const generateReadableAudioId = (recording: Recording) => {
-    const date = new Date(recording.recorded_at).toLocaleDateString('en-US', {
-      month: '2-digit',
-      day: '2-digit',
-      year: '2-digit'
-    });
-    const time = new Date(recording.recorded_at).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-    const shortId = recording.id.split('-')[0];
-    return `${date}-${time}-${shortId}`;
+    // New ID format is username_sentence-number_timestamp
+    // We'll display the user-friendly part they requested.
+    const parts = recording.id.split('_');
+    if (parts.length >= 2) {
+      return `${parts[0]}_${parts[1]}`;
+    }
+    // Fallback for any old or different ID formats
+    return recording.id.split('-')[0];
   };
 
   const handlePlayAudio = async (recording: Recording) => {
@@ -138,8 +134,22 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
         return;
       }
 
-      // Create new audio element
-      const audio = new Audio(recording.audio_url);
+      // Generate public URL from the stored path
+      const { data: urlData } = supabase.storage
+        .from('recordings')
+        .getPublicUrl(recording.audio_url);
+
+      if (!urlData?.publicUrl) {
+        toast({
+          title: "Error",
+          description: "Could not find the audio file.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create new audio element with the full public URL
+      const audio = new Audio(urlData.publicUrl);
       setCurrentAudio(audio);
       setPlayingAudio(recording.id);
 
@@ -151,7 +161,7 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
       audio.onerror = () => {
         toast({
           title: "Error",
-          description: "Failed to play audio",
+          description: "Failed to play audio. The file might be missing or corrupt.",
           variant: "destructive"
         });
         setPlayingAudio(null);
@@ -163,7 +173,7 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
       console.error('Error playing audio:', error);
       toast({
         title: "Error",
-        description: "Failed to play audio",
+        description: "An unexpected error occurred while trying to play audio.",
         variant: "destructive"
       });
       setPlayingAudio(null);

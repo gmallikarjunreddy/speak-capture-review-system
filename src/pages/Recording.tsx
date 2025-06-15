@@ -160,7 +160,9 @@ const Recording = () => {
 
     try {
       const sentenceNo = currentIndex + 1;
-      const recId = `${username}_${sentenceNo}`;
+      // We add a timestamp to ensure the ID is unique for every attempt,
+      // which is necessary for the re-record functionality.
+      const recId = `${username}_${sentenceNo}_${Date.now()}`;
       const fileName = `${recId}.webm`;
 
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -183,17 +185,17 @@ const Recording = () => {
           id: recId,
           user_id: user.id,
           sentence_id: sentences[currentIndex].id,
-          audio_url: uploadData.path,
+          audio_url: uploadData.path, // Save the path, not the full URL
           status: status,
           attempt_number: status === 'rejected' ? rejectedCount + 1 : 1,
-          duration_seconds: 0
+          duration_seconds: 0 // This could be calculated from the blob if needed
         });
 
       if (dbError) {
         console.error('Database error:', dbError);
         toast({
           title: "Database Error",
-          description: "Failed to save recording",
+          description: "Failed to save recording metadata",
           variant: "destructive"
         });
         return false;
@@ -208,7 +210,7 @@ const Recording = () => {
       console.error('Save recording error:', error);
       toast({
         title: "Error",
-        description: "Something went wrong",
+        description: "Something went wrong while saving",
         variant: "destructive"
       });
       return false;
