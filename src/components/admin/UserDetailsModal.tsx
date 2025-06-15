@@ -42,6 +42,9 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
     return () => {
       if (currentAudio) {
         currentAudio.pause();
+        if (currentAudio.src.startsWith('blob:')) {
+          URL.revokeObjectURL(currentAudio.src);
+        }
         setCurrentAudio(null);
         setPlayingAudio(null);
       }
@@ -126,6 +129,9 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
       // Stop current audio if playing
       if (currentAudio) {
         currentAudio.pause();
+        if (currentAudio.src.startsWith('blob:')) {
+          URL.revokeObjectURL(currentAudio.src);
+        }
         setCurrentAudio(null);
       }
 
@@ -134,12 +140,21 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
         return;
       }
 
-      // Generate public URL from the stored path
-      const { data: urlData } = supabase.storage
+      // Download the audio file as a blob
+      const { data: blob, error } = await supabase.storage
         .from('recordings')
-        .getPublicUrl(recording.audio_url);
+        .download(recording.audio_url);
 
-      if (!urlData?.publicUrl) {
+      if (error) {
+        toast({
+          title: "Error fetching audio",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!blob) {
         toast({
           title: "Error",
           description: "Could not find the audio file.",
@@ -148,14 +163,15 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
         return;
       }
 
-      // Create new audio element with the full public URL
-      const audio = new Audio(urlData.publicUrl);
+      const audioUrl = URL.createObjectURL(blob);
+      const audio = new Audio(audioUrl);
       setCurrentAudio(audio);
       setPlayingAudio(recording.id);
 
       audio.onended = () => {
         setPlayingAudio(null);
         setCurrentAudio(null);
+        URL.revokeObjectURL(audioUrl); // Clean up
       };
 
       audio.onerror = () => {
@@ -166,6 +182,7 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
         });
         setPlayingAudio(null);
         setCurrentAudio(null);
+        URL.revokeObjectURL(audioUrl); // Clean up
       };
 
       await audio.play();
@@ -184,6 +201,9 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
   const stopAudio = () => {
     if (currentAudio) {
       currentAudio.pause();
+      if (currentAudio.src.startsWith('blob:')) {
+        URL.revokeObjectURL(currentAudio.src);
+      }
       setCurrentAudio(null);
       setPlayingAudio(null);
     }
