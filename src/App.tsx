@@ -12,6 +12,7 @@ import Recording from "./pages/Recording";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import AdminUsers from "./pages/AdminUsers";
+import { Footer } from "@/components/Footer";
 
 const queryClient = new QueryClient();
 
@@ -81,7 +82,12 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <AppRoutes />
+          <div className="flex flex-col min-h-screen">
+            <main className="flex-grow">
+              <AppRoutes />
+            </main>
+            <Footer />
+          </div>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

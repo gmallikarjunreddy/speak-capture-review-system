@@ -34,7 +34,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm border-b shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
@@ -182,21 +181,6 @@ const Index = () => {
           </Button>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <div className="flex items-center justify-center space-x-3 mb-4">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
-              <Mic className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-xl font-bold">Voice Capture System</span>
-          </div>
-          <p className="text-gray-400">
-            Building the future of speech technology, one voice at a time.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 };
