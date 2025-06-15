@@ -21,7 +21,7 @@ const Admin = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [recordings, setRecordings] = useState<any[]>([]);
   const [filteredRecordings, setFilteredRecordings] = useState<any[]>([]);
-  const [newSentence, setNewSentence] = useState({ text: '', category: 'general' });
+  const [newSentence, setNewSentence] = useState<{ text: string }>({ text: '' });
   const [editingSentence, setEditingSentence] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   
