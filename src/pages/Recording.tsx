@@ -29,6 +29,7 @@ const Recording = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [completedCount, setCompletedCount] = useState(0);
   const [rejectedCount, setRejectedCount] = useState(0);
+  const [username, setUsername] = useState<string | null>(null);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -54,6 +55,25 @@ const Recording = () => {
 
     fetchSentences();
   }, []);
+
+  // Fetch the username (full_name) from user_profiles to use in recording IDs/filenames
+  useEffect(() => {
+    const fetchUsername = async () => {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .maybeSingle();
+      let name = data?.full_name;
+      if (!name) {
+        // fallback to email prefix, then user ID if necessary
+        name = user.email ? user.email.split('@')[0] : user.id;
+      }
+      setUsername(name.replace(/\s+/g, '_')); // Spaces to underscores for filenames
+    };
+    if (user) fetchUsername();
+  }, [user]);
 
   const createSession = async (totalSentences: number) => {
     if (!user) return;
@@ -136,19 +156,19 @@ const Recording = () => {
   };
 
   const saveRecording = async (status: 'accepted' | 'rejected') => {
-    if (!audioBlob || !user || !sessionId) return;
+    if (!audioBlob || !user || !sessionId || !username) return;
     
     try {
-      // Generate appropriate filename based on status
-      const currentRejectedCount = status === 'rejected' ? rejectedCount + 1 : rejectedCount;
-      const fileName = status === 'accepted' 
-        ? `${user.id}/recording_${Date.now()}.webm`
-        : `${user.id}/${user.id}_R_${currentRejectedCount}.webm`;
-      
+      // Compose the recording id and file name
+      const sentenceNo = currentIndex + 1;
+      const recId = `${username}_${sentenceNo}`;
+      const fileName = `${recId}.webm`;
+
+      // Upload the audio file with custom name
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('recordings')
-        .upload(fileName, audioBlob);
-      
+        .upload(fileName, audioBlob, { upsert: true });
+
       if (uploadError) {
         console.error('Upload error:', uploadError);
         toast({
@@ -158,19 +178,20 @@ const Recording = () => {
         });
         return false;
       }
-      
-      // Save recording metadata
+
+      // Save recording metadata using our custom id
       const { error: dbError } = await supabase
         .from('recordings')
         .insert({
+          id: recId,
           user_id: user.id,
           sentence_id: sentences[currentIndex].id,
           audio_url: uploadData.path,
           status: status,
-          attempt_number: status === 'rejected' ? currentRejectedCount : 1,
+          attempt_number: status === 'rejected' ? rejectedCount + 1 : 1,
           duration_seconds: 0
         });
-      
+
       if (dbError) {
         console.error('Database error:', dbError);
         toast({
@@ -180,11 +201,11 @@ const Recording = () => {
         });
         return false;
       }
-      
+
       if (status === 'rejected') {
-        setRejectedCount(currentRejectedCount);
+        setRejectedCount(rejectedCount + 1);
       }
-      
+
       return true;
     } catch (error) {
       console.error('Save recording error:', error);
