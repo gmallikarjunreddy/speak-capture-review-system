@@ -54,7 +54,7 @@ export type Database = {
           attempt_number?: number | null
           audio_url: string
           duration_seconds?: number | null
-          id?: string
+          id: string
           recorded_at?: string | null
           sentence_id?: string | null
           status?: string | null
