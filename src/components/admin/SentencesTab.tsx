@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -32,13 +31,33 @@ const SentencesTab = ({ sentences, setSentences, isLoading, fetchData }: Sentenc
       });
       return;
     }
+
+    console.log("Attempting to add sentence:", newSentence.text);
+    
+    // Check auth status
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    console.log("Current session:", session);
+    console.log("Session error:", sessionError);
+    
+    if (!session) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to add sentences",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { error } = await supabase
       .from("sentences")
       .insert([{ text: newSentence.text }]);
+      
+    console.log("Insert error:", error);
+    
     if (error) {
       toast({
         title: "Error",
-        description: "Failed to add sentence",
+        description: `Failed to add sentence: ${error.message}`,
         variant: "destructive",
       });
     } else {
@@ -67,10 +86,28 @@ const SentencesTab = ({ sentences, setSentences, isLoading, fetchData }: Sentenc
     setIsUploading(true);
 
     try {
+      console.log("Starting file upload process");
+      
+      // Check auth status
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log("Current session for file upload:", session);
+      console.log("Session error:", sessionError);
+      
+      if (!session) {
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to upload sentences",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const text = await file.text();
       const lines = text.split('\n')
         .map(line => line.trim())
         .filter(line => line.length > 0);
+
+      console.log("Parsed lines from file:", lines);
 
       if (lines.length === 0) {
         toast({
@@ -82,15 +119,18 @@ const SentencesTab = ({ sentences, setSentences, isLoading, fetchData }: Sentenc
       }
 
       const sentencesToInsert = lines.map(line => ({ text: line }));
+      console.log("Sentences to insert:", sentencesToInsert);
 
       const { error } = await supabase
         .from("sentences")
         .insert(sentencesToInsert);
 
+      console.log("Batch insert error:", error);
+
       if (error) {
         toast({
           title: "Error",
-          description: "Failed to upload sentences",
+          description: `Failed to upload sentences: ${error.message}`,
           variant: "destructive",
         });
       } else {
@@ -101,6 +141,7 @@ const SentencesTab = ({ sentences, setSentences, isLoading, fetchData }: Sentenc
         fetchData();
       }
     } catch (error) {
+      console.log("File processing error:", error);
       toast({
         title: "Error",
         description: "Failed to read the file",
