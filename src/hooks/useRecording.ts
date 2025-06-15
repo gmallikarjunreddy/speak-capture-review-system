@@ -43,7 +43,7 @@ export const useRecording = (sentences: any[]) => {
 
   useEffect(() => {
     const createSession = async (totalSentences: number) => {
-      if (!user || !sessionId) return;
+      if (!user) return;
       
       const { data, error } = await supabase
         .from('recording_sessions')
@@ -56,6 +56,15 @@ export const useRecording = (sentences: any[]) => {
         .select()
         .single();
       
+      if (error) {
+        toast({
+          title: "Error Creating Session",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+
       if (data) {
         setSessionId(data.id);
       }
@@ -142,6 +151,7 @@ export const useRecording = (sentences: any[]) => {
       const sentenceNo = currentIndex + 1;
       const recId = `${username}_${sentenceNo}_${Date.now()}`;
       const fileName = `${recId}.webm`;
+      console.log(`[saveRecording] Generated recId: ${recId}`);
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('recordings')
@@ -157,17 +167,20 @@ export const useRecording = (sentences: any[]) => {
         return false;
       }
 
+      const recordingData = {
+        id: recId,
+        user_id: user.id,
+        sentence_id: sentences[currentIndex].id,
+        audio_url: uploadData.path,
+        status: status,
+        attempt_number: status === 'rejected' ? rejectedCount + 1 : 1,
+        duration_seconds: 0
+      };
+      console.log('[saveRecording] Inserting data:', recordingData);
+
       const { error: dbError } = await supabase
         .from('recordings')
-        .insert({
-          id: recId,
-          user_id: user.id,
-          sentence_id: sentences[currentIndex].id,
-          audio_url: uploadData.path,
-          status: status,
-          attempt_number: status === 'rejected' ? rejectedCount + 1 : 1,
-          duration_seconds: 0
-        });
+        .insert(recordingData);
 
       if (dbError) {
         console.error('Database error:', dbError);
