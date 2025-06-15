@@ -124,13 +124,11 @@ const Admin = () => {
         setSentences(sentencesData || []);
       }
 
-      console.log('Fetching users...');
-      // Fetch users with profiles - simplified query
+      // Fetch all user profiles
       const { data: usersData, error: usersError } = await supabase
         .from('user_profiles')
         .select('*')
         .order('created_at', { ascending: false });
-      
       if (usersError) {
         console.error('Error fetching users:', usersError);
         toast({
@@ -139,17 +137,14 @@ const Admin = () => {
           variant: "destructive"
         });
       } else {
-        console.log('Users fetched:', usersData?.length || 0);
         setUsers(usersData || []);
       }
 
-      console.log('Fetching recordings...');
-      // Fetch recordings with a simpler approach - first get recordings, then match with user data
+      // Fetch all recordings
       const { data: recordingsData, error: recordingsError } = await supabase
         .from('recordings')
         .select('*')
         .order('recorded_at', { ascending: false });
-      
       if (recordingsError) {
         console.error('Error fetching recordings:', recordingsError);
         toast({
@@ -158,34 +153,28 @@ const Admin = () => {
           variant: "destructive"
         });
       } else {
-        console.log('Recordings fetched:', recordingsData?.length || 0);
-        
-        // Now enrich recordings with user and sentence data
+        // Enrich recordings with user and sentence data
         const enrichedRecordings = await Promise.all(
           (recordingsData || []).map(async (recording) => {
             let userProfile = null;
             let sentence = null;
-            
-            // Fetch user profile if user_id exists
+            // Use .maybeSingle() for safety
             if (recording.user_id) {
               const { data: userData } = await supabase
                 .from('user_profiles')
                 .select('full_name, email')
                 .eq('id', recording.user_id)
-                .single();
+                .maybeSingle();
               userProfile = userData;
             }
-            
-            // Fetch sentence if sentence_id exists
             if (recording.sentence_id) {
               const { data: sentenceData } = await supabase
                 .from('sentences')
-                .select('text, category')
+                .select('text')
                 .eq('id', recording.sentence_id)
-                .single();
+                .maybeSingle();
               sentence = sentenceData;
             }
-            
             return {
               ...recording,
               user_profiles: userProfile,
@@ -193,7 +182,6 @@ const Admin = () => {
             };
           })
         );
-        
         setRecordings(enrichedRecordings);
       }
     } catch (error) {

@@ -157,14 +157,12 @@ const Recording = () => {
 
   const saveRecording = async (status: 'accepted' | 'rejected') => {
     if (!audioBlob || !user || !sessionId || !username) return;
-    
+
     try {
-      // Compose the recording id and file name
       const sentenceNo = currentIndex + 1;
       const recId = `${username}_${sentenceNo}`;
       const fileName = `${recId}.webm`;
 
-      // Upload the audio file with custom name
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('recordings')
         .upload(fileName, audioBlob, { upsert: true });
@@ -179,7 +177,6 @@ const Recording = () => {
         return false;
       }
 
-      // Save recording metadata using our custom id
       const { error: dbError } = await supabase
         .from('recordings')
         .insert({
@@ -222,25 +219,22 @@ const Recording = () => {
     const success = await saveRecording('accepted');
     if (!success) return;
     
-    // Update session
-    const newCompletedCount = completedCount + 1;
     await supabase
       .from('recording_sessions')
       .update({ 
-        completed_sentences: newCompletedCount,
-        status: newCompletedCount >= sentences.length ? 'completed' : 'in_progress',
-        completed_at: newCompletedCount >= sentences.length ? new Date().toISOString() : null
+        completed_sentences: completedCount + 1,
+        status: completedCount + 1 >= sentences.length ? 'completed' : 'in_progress',
+        completed_at: completedCount + 1 >= sentences.length ? new Date().toISOString() : null
       })
       .eq('id', sessionId);
     
-    setCompletedCount(newCompletedCount);
+    setCompletedCount(completedCount + 1);
     
     toast({
       title: "Recording Accepted",
       description: "Moving to next sentence"
     });
     
-    // Move to next sentence or complete
     if (currentIndex + 1 < sentences.length) {
       setCurrentIndex(currentIndex + 1);
       resetRecording();
