@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Edit, Trash2, Plus } from "lucide-react";
+import { Edit, Trash2, Plus, Upload, FileText } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
 
 interface SentencesTabProps {
   sentences: any[];
@@ -20,6 +21,7 @@ const SentencesTab = ({ sentences, setSentences, isLoading, fetchData }: Sentenc
   const { toast } = useToast();
   const [newSentence, setNewSentence] = useState({ text: "" });
   const [editingSentence, setEditingSentence] = useState<any>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const addSentence = async () => {
     if (!newSentence.text.trim()) {
@@ -46,6 +48,68 @@ const SentencesTab = ({ sentences, setSentences, isLoading, fetchData }: Sentenc
       });
       setNewSentence({ text: "" });
       fetchData();
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.txt')) {
+      toast({
+        title: "Error",
+        description: "Please upload a .txt file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const text = await file.text();
+      const lines = text.split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+      if (lines.length === 0) {
+        toast({
+          title: "Error",
+          description: "No valid sentences found in the file",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const sentencesToInsert = lines.map(line => ({ text: line }));
+
+      const { error } = await supabase
+        .from("sentences")
+        .insert(sentencesToInsert);
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to upload sentences",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: `Successfully added ${lines.length} sentences`,
+        });
+        fetchData();
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to read the file",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+      // Reset the input
+      event.target.value = '';
     }
   };
 
@@ -114,6 +178,48 @@ const SentencesTab = ({ sentences, setSentences, isLoading, fetchData }: Sentenc
             <Plus className="w-4 h-4 mr-2" />
             Add Sentence
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle>Upload Sentences from File</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="file-upload">Upload .txt file (one sentence per line)</Label>
+            <div className="flex items-center gap-4">
+              <Input
+                id="file-upload"
+                type="file"
+                accept=".txt"
+                onChange={handleFileUpload}
+                disabled={isUploading}
+                className="bg-white"
+              />
+              <Button 
+                variant="outline" 
+                disabled={isUploading}
+                className="shrink-0"
+              >
+                {isUploading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Choose File
+                  </>
+                )}
+              </Button>
+            </div>
+            <p className="text-sm text-gray-500 flex items-center gap-1">
+              <FileText className="w-4 h-4" />
+              Upload a .txt file with one sentence per line
+            </p>
+          </div>
         </CardContent>
       </Card>
 
