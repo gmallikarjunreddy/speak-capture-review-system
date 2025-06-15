@@ -14,7 +14,7 @@ export const Footer = () => {
         </p>
         <div className="flex justify-center items-center space-x-4 w-full">
           <img src="/lovable-uploads/6fab767f-d57d-48e1-8938-bf7e64722a11.png" alt="ICFAI Foundation for Higher Education Logo" className="max-h-12 w-auto object-contain" />
-          <img src="/lovable-uploads/ab5649a2-059c-4c00-bf78-609cd8b00ec2.png" alt="IcfaiTech Logo" className="max-h-12 w-auto object-contain bg-gray-800 p-1 rounded-bl-md" />
+          <img src="/lovable-uploads/fd3b9f3a-e980-4235-8761-1a5d1c8de3d1.png" alt="aiTe Logo" className="max-h-12 w-auto object-contain" />
         </div>
       </div>
     </footer>;
