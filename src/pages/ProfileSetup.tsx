@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save } from 'lucide-react';
+import { Header } from '@/components/Header';
 
 const ProfileSetup = () => {
   const { user } = useAuth();
@@ -108,10 +108,7 @@ const ProfileSetup = () => {
 
         <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader>
-            <div className="flex justify-center items-center space-x-4 mb-4">
-              <img src="/lovable-uploads/6fab767f-d57d-48e1-8938-bf7e64722a11.png" alt="ICFAI Foundation for Higher Education Logo" className="h-12 object-contain" />
-              <img src="/lovable-uploads/ab5649a2-059c-4c00-bf78-609cd8b00ec2.png" alt="IcfaiTech Logo" className="h-12 object-contain" />
-            </div>
+            <Header className="mb-4" />
             <CardTitle className="text-2xl text-center">Complete Your Profile</CardTitle>
           </CardHeader>
           <CardContent>

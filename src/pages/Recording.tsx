@@ -5,6 +5,7 @@ import { ProgressDisplay } from '@/components/recording/ProgressDisplay';
 import { SentenceDisplay } from '@/components/recording/SentenceDisplay';
 import { RecordingControls } from '@/components/recording/RecordingControls';
 import { HeaderActions } from '@/components/recording/HeaderActions';
+import { Header } from '@/components/Header';
 
 const Recording = () => {
   const [sentences, setSentences] = useState<any[]>([]);
@@ -55,10 +56,7 @@ const Recording = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
-        <div className="flex justify-center items-center space-x-4 mb-4">
-          <img src="/lovable-uploads/6fab767f-d57d-48e1-8938-bf7e64722a11.png" alt="ICFAI Foundation for Higher Education Logo" className="h-12 object-contain" />
-          <img src="/lovable-uploads/ab5649a2-059c-4c00-bf78-609cd8b00ec2.png" alt="IcfaiTech Logo" className="h-12 object-contain bg-gray-100 p-1 rounded-md" />
-        </div>
+        <Header className="mb-4" />
         <HeaderActions />
 
         <ProgressDisplay 

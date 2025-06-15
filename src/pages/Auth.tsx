@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Mic, Mail, Lock } from 'lucide-react';
+import { Header } from '@/components/Header';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -63,10 +63,7 @@ const Auth = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-xl border-0 bg-white/80 backdrop-blur-sm">
         <CardHeader className="text-center space-y-4">
-          <div className="flex justify-center items-center space-x-4">
-            <img src="/lovable-uploads/6fab767f-d57d-48e1-8938-bf7e64722a11.png" alt="ICFAI Foundation for Higher Education Logo" className="h-12 object-contain" />
-            <img src="/lovable-uploads/ab5649a2-059c-4c00-bf78-609cd8b00ec2.png" alt="IcfaiTech Logo" className="h-12 object-contain bg-gray-100 p-1 rounded-md" />
-          </div>
+          <Header className="mb-4" />
           <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
             <Mic className="w-8 h-8 text-white" />
           </div>

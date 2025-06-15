@@ -1,9 +1,9 @@
-
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
 import { Mic, Users, FileText, BarChart3, ArrowRight } from 'lucide-react';
+import { Header } from '@/components/Header';
 
 const Index = () => {
   const { user } = useAuth();
@@ -46,9 +46,8 @@ const Index = () => {
                 Voice Capture System
               </h1>
             </div>
-            <div className="hidden lg:flex items-center space-x-4">
-              <img src="/lovable-uploads/6fab767f-d57d-48e1-8938-bf7e64722a11.png" alt="ICFAI Foundation for Higher Education Logo" className="h-12 object-contain" />
-              <img src="/lovable-uploads/ab5649a2-059c-4c00-bf78-609cd8b00ec2.png" alt="IcfaiTech Logo" className="h-12 object-contain" />
+            <div className="hidden lg:flex">
+              <Header />
             </div>
             <div className="flex items-center space-x-4">
               {user ? (
