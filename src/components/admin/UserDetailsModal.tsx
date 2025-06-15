@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -22,7 +21,6 @@ interface Recording {
   duration_seconds: number;
   sentences: {
     text: string;
-    category: string;
   } | null;
 }
 
@@ -86,9 +84,9 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
           if (recording.sentence_id) {
             const { data: sentenceData } = await supabase
               .from('sentences')
-              .select('text, category')
+              .select('text')
               .eq('id', recording.sentence_id)
-              .single();
+              .maybeSingle();
             sentence = sentenceData;
           }
           
@@ -262,7 +260,6 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
                       <TableRow>
                         <TableHead>Audio ID</TableHead>
                         <TableHead>Sentence</TableHead>
-                        <TableHead>Category</TableHead>
                         <TableHead>Recorded At</TableHead>
                         <TableHead>Duration</TableHead>
                         <TableHead>Actions</TableHead>
@@ -278,11 +275,6 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
                             <div className="truncate" title={recording.sentences?.text}>
                               {recording.sentences?.text || 'Deleted sentence'}
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {recording.sentences?.category || 'N/A'}
-                            </Badge>
                           </TableCell>
                           <TableCell>
                             {new Date(recording.recorded_at).toLocaleDateString()}
@@ -331,7 +323,6 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
                       <TableRow>
                         <TableHead>Audio ID</TableHead>
                         <TableHead>Sentence</TableHead>
-                        <TableHead>Category</TableHead>
                         <TableHead>Recorded At</TableHead>
                         <TableHead>Duration</TableHead>
                         <TableHead>Actions</TableHead>
@@ -347,11 +338,6 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
                             <div className="truncate" title={recording.sentences?.text}>
                               {recording.sentences?.text || 'Deleted sentence'}
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {recording.sentences?.category || 'N/A'}
-                            </Badge>
                           </TableCell>
                           <TableCell>
                             {new Date(recording.recorded_at).toLocaleDateString()}

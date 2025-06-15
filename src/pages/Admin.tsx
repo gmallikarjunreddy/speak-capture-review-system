@@ -42,7 +42,7 @@ const Admin = () => {
   
   const { toast } = useToast();
 
-  const categories = ['general', 'introduction', 'instruction', 'technology', 'personal', 'education', 'arts', 'health', 'travel'];
+  const categories = []; // category filtering not needed
 
   useEffect(() => {
     if (isAdmin) {
@@ -64,12 +64,7 @@ const Admin = () => {
       filtered = filtered.filter(recording => recording.status === recordingFilters.status);
     }
 
-    // Filter by category
-    if (recordingFilters.category !== 'all') {
-      filtered = filtered.filter(recording => recording.sentences?.category === recordingFilters.category);
-    }
-
-    // Filter by search term
+    // Filter by search term (no category search)
     if (recordingFilters.search) {
       const searchTerm = recordingFilters.search.toLowerCase();
       filtered = filtered.filter(recording => 
@@ -79,20 +74,15 @@ const Admin = () => {
       );
     }
 
-    // Sort recordings
+    // Sort recordings (remove sentence_text sort, category)
     filtered.sort((a, b) => {
       let aValue = a[recordingFilters.sortBy];
       let bValue = b[recordingFilters.sortBy];
 
-      // Handle nested properties
+      // Handle nested properties for sorting (no category)
       if (recordingFilters.sortBy === 'user_name') {
         aValue = a.user_profiles?.full_name || '';
         bValue = b.user_profiles?.full_name || '';
-      }
-
-      if (recordingFilters.sortBy === 'sentence_text') {
-        aValue = a.sentences?.text || '';
-        bValue = b.sentences?.text || '';
       }
 
       if (recordingFilters.sortOrder === 'asc') {
@@ -103,7 +93,7 @@ const Admin = () => {
     });
 
     setFilteredRecordings(filtered);
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1);
   };
 
   // Pagination calculations
@@ -230,7 +220,7 @@ const Admin = () => {
 
     const { error } = await supabase
       .from('sentences')
-      .insert([newSentence]);
+      .insert([{ text: newSentence.text }]);
 
     if (error) {
       console.error('Error adding sentence:', error);
@@ -244,7 +234,7 @@ const Admin = () => {
         title: "Success",
         description: "Sentence added successfully"
       });
-      setNewSentence({ text: '', category: 'general' });
+      setNewSentence({ text: '' });
       fetchData();
     }
   };
@@ -256,8 +246,7 @@ const Admin = () => {
       .from('sentences')
       .update({
         text: editingSentence.text,
-        category: editingSentence.category,
-        is_active: editingSentence.is_active
+        is_active: editingSentence.is_active, // keep is_active so admin still can toggle, but remove category
       })
       .eq('id', editingSentence.id);
 
@@ -368,7 +357,7 @@ const Admin = () => {
 
           {/* Sentences Tab */}
           <TabsContent value="sentences" className="space-y-6">
-            {/* Add New Sentence */}
+            {/* Add New Sentence (category field removed) */}
             <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle>Add New Sentence</CardTitle>
@@ -384,24 +373,6 @@ const Admin = () => {
                     className="bg-white"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sentence-category">Category</Label>
-                  <Select 
-                    value={newSentence.category} 
-                    onValueChange={(value) => setNewSentence({...newSentence, category: value})}
-                  >
-                    <SelectTrigger className="bg-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category.charAt(0).toUpperCase() + category.slice(1)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
                 <Button onClick={addSentence} disabled={isLoading}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add Sentence
@@ -409,7 +380,7 @@ const Admin = () => {
               </CardContent>
             </Card>
 
-            {/* Sentences List */}
+            {/* Sentences List (no category) */}
             <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle>Manage Sentences ({sentences.length})</CardTitle>
@@ -422,7 +393,6 @@ const Admin = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Text</TableHead>
-                        <TableHead>Category</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
@@ -439,27 +409,6 @@ const Admin = () => {
                               />
                             ) : (
                               sentence.text
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {editingSentence?.id === sentence.id ? (
-                              <Select 
-                                value={editingSentence.category} 
-                                onValueChange={(value) => setEditingSentence({...editingSentence, category: value})}
-                              >
-                                <SelectTrigger className="bg-white">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {categories.map((category) => (
-                                    <SelectItem key={category} value={category}>
-                                      {category.charAt(0).toUpperCase() + category.slice(1)}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              sentence.category
                             )}
                           </TableCell>
                           <TableCell>
@@ -512,7 +461,7 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
-          {/* Users Tab */}
+          {/* Users Tab (unchanged) */}
           <TabsContent value="users">
             <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
               <CardHeader>
@@ -561,7 +510,7 @@ const Admin = () => {
 
           {/* Recordings Tab */}
           <TabsContent value="recordings" className="space-y-6">
-            {/* Filters Card */}
+            {/* Filters Card (remove category) */}
             <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -605,26 +554,7 @@ const Admin = () => {
                     </Select>
                   </div>
 
-                  {/* Category Filter */}
-                  <div className="space-y-2">
-                    <Label>Category</Label>
-                    <Select 
-                      value={recordingFilters.category} 
-                      onValueChange={(value) => setRecordingFilters({...recordingFilters, category: value})}
-                    >
-                      <SelectTrigger className="bg-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Categories</SelectItem>
-                        {categories.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category.charAt(0).toUpperCase() + category.slice(1)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {/* Category Filter - REMOVED */}
 
                   {/* Sort By */}
                   <div className="space-y-2">
@@ -645,7 +575,6 @@ const Admin = () => {
                     </Select>
                   </div>
                 </div>
-
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-gray-600">
                     Showing {currentRecordings.length} of {filteredRecordings.length} recordings
@@ -655,7 +584,7 @@ const Admin = () => {
                     size="sm"
                     onClick={() => setRecordingFilters({
                       status: 'all',
-                      category: 'all',
+                      category: 'all', // safe to keep for backward compatibility
                       search: '',
                       sortBy: 'recorded_at',
                       sortOrder: 'desc'
@@ -667,7 +596,7 @@ const Admin = () => {
               </CardContent>
             </Card>
 
-            {/* Recordings Table */}
+            {/* Recordings Table (remove category column) */}
             <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle>Audio Recordings ({filteredRecordings.length} filtered)</CardTitle>
@@ -682,7 +611,6 @@ const Admin = () => {
                         <TableRow>
                           <TableHead>User</TableHead>
                           <TableHead>Sentence</TableHead>
-                          <TableHead>Category</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Recorded At</TableHead>
                           <TableHead>Duration</TableHead>
@@ -696,7 +624,6 @@ const Admin = () => {
                             <TableCell className="max-w-md truncate">
                               {recording.sentences?.text || 'Deleted sentence'}
                             </TableCell>
-                            <TableCell>{recording.sentences?.category || 'N/A'}</TableCell>
                             <TableCell>
                               <span className={`px-2 py-1 rounded-full text-xs ${
                                 recording.status === 'accepted' 
@@ -719,7 +646,7 @@ const Admin = () => {
                         ))}
                       </TableBody>
                     </Table>
-
+                    
                     {/* Pagination */}
                     {totalPages > 1 && (
                       <div className="mt-6 flex justify-center">

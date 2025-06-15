@@ -82,7 +82,6 @@ export type Database = {
       }
       sentences: {
         Row: {
-          category: string | null
           created_at: string | null
           created_by: string | null
           id: string
@@ -90,7 +89,6 @@ export type Database = {
           text: string
         }
         Insert: {
-          category?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
@@ -98,7 +96,6 @@ export type Database = {
           text: string
         }
         Update: {
-          category?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
