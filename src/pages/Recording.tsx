@@ -1,45 +1,19 @@
-import { useState, useEffect, useRef } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
-import { 
-  Mic, 
-  MicOff, 
-  Play, 
-  Square, 
-  Check, 
-  X, 
-  ArrowLeft, 
-  SkipForward,
-  RotateCcw
-} from 'lucide-react';
+import { useRecording } from '@/hooks/useRecording';
+import { ProgressDisplay } from '@/components/recording/ProgressDisplay';
+import { SentenceDisplay } from '@/components/recording/SentenceDisplay';
+import { RecordingControls } from '@/components/recording/RecordingControls';
+import { HeaderActions } from '@/components/recording/HeaderActions';
 
 const Recording = () => {
-  const { user } = useAuth();
   const [sentences, setSentences] = useState<any[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [completedCount, setCompletedCount] = useState(0);
-  const [rejectedCount, setRejectedCount] = useState(0);
-  const [username, setUsername] = useState<string | null>(null);
-  
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  
-  const { toast } = useToast();
-  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchSentences = async () => {
+      setIsLoading(true);
       const { data, error } = await supabase
         .from('sentences')
         .select('*')
@@ -48,235 +22,28 @@ const Recording = () => {
       
       if (data) {
         setSentences(data);
-        // Create recording session
-        createSession(data.length);
       }
+      setIsLoading(false);
     };
 
     fetchSentences();
   }, []);
 
-  // Fetch the username (full_name) from user_profiles to use in recording IDs/filenames
-  useEffect(() => {
-    const fetchUsername = async () => {
-      if (!user) return;
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('full_name')
-        .eq('id', user.id)
-        .maybeSingle();
-      let name = data?.full_name;
-      if (!name) {
-        // fallback to email prefix, then user ID if necessary
-        name = user.email ? user.email.split('@')[0] : user.id;
-      }
-      setUsername(name.replace(/\s+/g, '_')); // Spaces to underscores for filenames
-    };
-    if (user) fetchUsername();
-  }, [user]);
+  const {
+    currentIndex,
+    isRecording,
+    isPlaying,
+    audioUrl,
+    audioRef,
+    startRecording,
+    stopRecording,
+    playRecording,
+    acceptRecording,
+    rejectRecording,
+    skipSentence,
+  } = useRecording(sentences);
 
-  const createSession = async (totalSentences: number) => {
-    if (!user) return;
-    
-    const { data, error } = await supabase
-      .from('recording_sessions')
-      .insert({
-        user_id: user.id,
-        total_sentences: totalSentences,
-        completed_sentences: 0,
-        status: 'in_progress'
-      })
-      .select()
-      .single();
-    
-    if (data) {
-      setSessionId(data.id);
-    }
-  };
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      
-      mediaRecorderRef.current = mediaRecorder;
-      chunksRef.current = [];
-      
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunksRef.current.push(event.data);
-        }
-      };
-      
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        setAudioBlob(blob);
-        setAudioUrl(URL.createObjectURL(blob));
-        stream.getTracks().forEach(track => track.stop());
-      };
-      
-      mediaRecorder.start();
-      setIsRecording(true);
-      
-      toast({
-        title: "Recording Started",
-        description: "Speak clearly and naturally"
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Could not access microphone",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      
-      toast({
-        title: "Recording Stopped",
-        description: "Review your recording and accept or re-record"
-      });
-    }
-  };
-
-  const playRecording = () => {
-    if (audioUrl && audioRef.current) {
-      audioRef.current.src = audioUrl;
-      audioRef.current.play();
-      setIsPlaying(true);
-      
-      audioRef.current.onended = () => {
-        setIsPlaying(false);
-      };
-    }
-  };
-
-  const saveRecording = async (status: 'accepted' | 'rejected') => {
-    if (!audioBlob || !user || !sessionId || !username) return;
-
-    try {
-      const sentenceNo = currentIndex + 1;
-      // We add a timestamp to ensure the ID is unique for every attempt,
-      // which is necessary for the re-record functionality.
-      const recId = `${username}_${sentenceNo}_${Date.now()}`;
-      const fileName = `${recId}.webm`;
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('recordings')
-        .upload(fileName, audioBlob, { upsert: true });
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        toast({
-          title: "Upload Error",
-          description: "Failed to upload recording",
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      const { error: dbError } = await supabase
-        .from('recordings')
-        .insert({
-          id: recId,
-          user_id: user.id,
-          sentence_id: sentences[currentIndex].id,
-          audio_url: uploadData.path, // Save the path, not the full URL
-          status: status,
-          attempt_number: status === 'rejected' ? rejectedCount + 1 : 1,
-          duration_seconds: 0 // This could be calculated from the blob if needed
-        });
-
-      if (dbError) {
-        console.error('Database error:', dbError);
-        toast({
-          title: "Database Error",
-          description: "Failed to save recording metadata",
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      if (status === 'rejected') {
-        setRejectedCount(rejectedCount + 1);
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Save recording error:', error);
-      toast({
-        title: "Error",
-        description: "Something went wrong while saving",
-        variant: "destructive"
-      });
-      return false;
-    }
-  };
-
-  const acceptRecording = async () => {
-    const success = await saveRecording('accepted');
-    if (!success) return;
-    
-    await supabase
-      .from('recording_sessions')
-      .update({ 
-        completed_sentences: completedCount + 1,
-        status: completedCount + 1 >= sentences.length ? 'completed' : 'in_progress',
-        completed_at: completedCount + 1 >= sentences.length ? new Date().toISOString() : null
-      })
-      .eq('id', sessionId);
-    
-    setCompletedCount(completedCount + 1);
-    
-    toast({
-      title: "Recording Accepted",
-      description: "Moving to next sentence"
-    });
-    
-    if (currentIndex + 1 < sentences.length) {
-      setCurrentIndex(currentIndex + 1);
-      resetRecording();
-    } else {
-      toast({
-        title: "Session Complete!",
-        description: "All recordings completed successfully"
-      });
-      navigate('/dashboard');
-    }
-  };
-
-  const rejectRecording = async () => {
-    const success = await saveRecording('rejected');
-    if (success) {
-      toast({
-        title: "Recording Rejected",
-        description: "Recording saved as rejected. Try recording again"
-      });
-    }
-    resetRecording();
-  };
-
-  const resetRecording = () => {
-    setAudioBlob(null);
-    setAudioUrl(null);
-    setIsPlaying(false);
-    if (audioRef.current) {
-      audioRef.current.src = '';
-    }
-  };
-
-  const skipSentence = () => {
-    if (currentIndex + 1 < sentences.length) {
-      setCurrentIndex(currentIndex + 1);
-      resetRecording();
-    }
-  };
-
-  if (sentences.length === 0) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
@@ -284,121 +51,31 @@ const Recording = () => {
     );
   }
 
-  const currentSentence = sentences[currentIndex];
-  const progress = ((currentIndex + 1) / sentences.length) * 100;
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
-        <Button 
-          variant="outline" 
-          onClick={() => navigate('/dashboard')}
-          className="mb-6"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Dashboard
-        </Button>
+        <HeaderActions />
 
-        {/* Progress */}
-        <Card className="mb-6 shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-          <CardContent className="pt-6">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium">Progress</span>
-              <span className="text-sm text-gray-600">
-                {currentIndex + 1} of {sentences.length}
-              </span>
-            </div>
-            <Progress value={progress} className="h-2" />
-          </CardContent>
-        </Card>
+        <ProgressDisplay 
+          currentIndex={currentIndex}
+          totalSentences={sentences.length}
+        />
 
-        {/* Current Sentence */}
-        <Card className="mb-6 shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="text-center">Read This Sentence</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8">
-              <p className="text-2xl font-medium text-gray-800 leading-relaxed mb-4">
-                "{currentSentence?.text}"
-              </p>
-              <p className="text-sm text-gray-500">
-                Category: {currentSentence?.category}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <SentenceDisplay sentence={sentences[currentIndex]} />
 
-        {/* Recording Controls */}
-        <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-6">
-              {/* Recording Button */}
-              <div>
-                <Button
-                  size="lg"
-                  onClick={isRecording ? stopRecording : startRecording}
-                  className={`w-20 h-20 rounded-full ${
-                    isRecording 
-                      ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
-                      : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700'
-                  }`}
-                >
-                  {isRecording ? <Square className="w-8 h-8" /> : <Mic className="w-8 h-8" />}
-                </Button>
-                <p className="text-sm text-gray-600 mt-2">
-                  {isRecording ? 'Recording... Click to stop' : 'Click to start recording'}
-                </p>
-              </div>
-
-              {/* Audio Playback */}
-              {audioUrl && (
-                <div className="space-y-4">
-                  <audio ref={audioRef} className="hidden" />
-                  <Button
-                    variant="outline"
-                    onClick={playRecording}
-                    disabled={isPlaying}
-                  >
-                    <Play className="w-4 h-4 mr-2" />
-                    {isPlaying ? 'Playing...' : 'Play Recording'}
-                  </Button>
-                  
-                  {/* Accept/Reject Buttons */}
-                  <div className="flex justify-center space-x-4">
-                    <Button
-                      onClick={acceptRecording}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <Check className="w-4 h-4 mr-2" />
-                      Accept
-                    </Button>
-                    <Button
-                      onClick={rejectRecording}
-                      variant="outline"
-                      className="border-red-500 text-red-500 hover:bg-red-50"
-                    >
-                      <RotateCcw className="w-4 h-4 mr-2" />
-                      Re-record
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Skip Button */}
-              <div className="pt-4 border-t">
-                <Button
-                  variant="ghost"
-                  onClick={skipSentence}
-                  disabled={currentIndex + 1 >= sentences.length}
-                >
-                  <SkipForward className="w-4 h-4 mr-2" />
-                  Skip This Sentence
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <RecordingControls
+          isRecording={isRecording}
+          startRecording={startRecording}
+          stopRecording={stopRecording}
+          audioUrl={audioUrl}
+          audioRef={audioRef}
+          isPlaying={isPlaying}
+          playRecording={playRecording}
+          acceptRecording={acceptRecording}
+          rejectRecording={rejectRecording}
+          skipSentence={skipSentence}
+          isSkipDisabled={currentIndex + 1 >= sentences.length}
+        />
       </div>
     </div>
   );
