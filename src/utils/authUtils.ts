@@ -60,12 +60,6 @@ export const retryWithAuth = async <T>(
 ): Promise<T> => {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      // Ensure we have a valid session before attempting the operation
-      const session = await ensureAuthSession();
-      if (!session) {
-        throw new Error("No valid authentication session");
-      }
-      
       return await operation();
     } catch (error: any) {
       console.log(`Attempt ${attempt} failed:`, error.message);
@@ -80,4 +74,18 @@ export const retryWithAuth = async <T>(
   }
   
   throw new Error("All retry attempts failed");
+};
+
+// Admin-specific database operations that bypass user auth
+export const adminDatabaseOperation = async <T>(
+  operation: () => Promise<T>
+): Promise<T> => {
+  try {
+    // For admin operations, we'll bypass the auth retry mechanism
+    // since admin operations don't require user authentication
+    return await operation();
+  } catch (error: any) {
+    console.error("Admin database operation failed:", error);
+    throw error;
+  }
 };

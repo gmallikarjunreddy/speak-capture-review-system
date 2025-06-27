@@ -10,6 +10,7 @@ import AdminAuth from '@/components/AdminAuth';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { useToast } from '@/hooks/use-toast';
 import UserDetailsModal from '@/components/admin/UserDetailsModal';
+import { adminDatabaseOperation } from '@/utils/authUtils';
 
 const Admin = () => {
   const { isAdmin, loading, adminLogin, adminLogout } = useAdminAuth();
@@ -33,46 +34,77 @@ const Admin = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch sentences
-      const { data: sentencesData } = await supabase
-        .from('sentences')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Fetch sentences using admin operation
+      const sentencesData = await adminDatabaseOperation(async () => {
+        const { data, error } = await supabase
+          .from('sentences')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+      });
       setSentences(sentencesData || []);
 
-      // Fetch user profiles
-      const { data: usersData } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Fetch user profiles using admin operation
+      const usersData = await adminDatabaseOperation(async () => {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+      });
       setUsers(usersData || []);
 
-      // Fetch all recordings and enrich
-      const { data: recordingsData } = await supabase
-        .from('recordings')
-        .select('*')
-        .order('recorded_at', { ascending: false });
+      // Fetch all recordings and enrich using admin operation
+      const recordingsData = await adminDatabaseOperation(async () => {
+        const { data, error } = await supabase
+          .from('recordings')
+          .select('*')
+          .order('recorded_at', { ascending: false });
+        if (error) throw error;
+        return data;
+      });
 
       const enrichedRecordings = await Promise.all(
         (recordingsData || []).map(async (recording) => {
           let userProfile = null;
           let sentence = null;
+          
           if (recording.user_id) {
-            const { data: userData } = await supabase
-              .from('user_profiles')
-              .select('full_name, email')
-              .eq('id', recording.user_id)
-              .maybeSingle();
-            userProfile = userData;
+            try {
+              const userData = await adminDatabaseOperation(async () => {
+                const { data, error } = await supabase
+                  .from('user_profiles')
+                  .select('full_name, email')
+                  .eq('id', recording.user_id)
+                  .maybeSingle();
+                if (error) throw error;
+                return data;
+              });
+              userProfile = userData;
+            } catch (error) {
+              console.error("Error fetching user profile:", error);
+            }
           }
+          
           if (recording.sentence_id) {
-            const { data: sentenceData } = await supabase
-              .from('sentences')
-              .select('text')
-              .eq('id', recording.sentence_id)
-              .maybeSingle();
-            sentence = sentenceData;
+            try {
+              const sentenceData = await adminDatabaseOperation(async () => {
+                const { data, error } = await supabase
+                  .from('sentences')
+                  .select('text')
+                  .eq('id', recording.sentence_id)
+                  .maybeSingle();
+                if (error) throw error;
+                return data;
+              });
+              sentence = sentenceData;
+            } catch (error) {
+              console.error("Error fetching sentence:", error);
+            }
           }
+          
           return {
             ...recording,
             user_profiles: userProfile,
@@ -81,10 +113,11 @@ const Admin = () => {
         })
       );
       setRecordings(enrichedRecordings);
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Error fetching admin data:", error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred",
+        description: "Failed to load admin data. Please try refreshing the page.",
         variant: "destructive"
       });
     } finally {

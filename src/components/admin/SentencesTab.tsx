@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ensureAuthSession, retryWithAuth } from "@/utils/authUtils";
+import { adminDatabaseOperation } from "@/utils/authUtils";
 
 interface SentencesTabProps {
   sentences: any[];
@@ -42,7 +42,7 @@ const SentencesTab = ({ sentences, setSentences, isLoading, fetchData }: Sentenc
     }
 
     try {
-      await retryWithAuth(async () => {
+      await adminDatabaseOperation(async () => {
         const { error } = await supabase
           .from("sentences")
           .insert([{ text: newSentence.text }]);
@@ -107,12 +107,6 @@ const SentencesTab = ({ sentences, setSentences, isLoading, fetchData }: Sentenc
 
     try {
       console.log("Starting file upload process");
-      
-      // Ensure we have a valid session before starting
-      const session = await ensureAuthSession();
-      if (!session) {
-        throw new Error("Authentication session expired. Please refresh the page and try again.");
-      }
 
       const text = await file.text();
       const processedLines = validateAndProcessFile(text);
@@ -144,7 +138,7 @@ const SentencesTab = ({ sentences, setSentences, isLoading, fetchData }: Sentenc
         const sentencesToInsert = batch.map(line => ({ text: line }));
 
         try {
-          await retryWithAuth(async () => {
+          await adminDatabaseOperation(async () => {
             const { error } = await supabase
               .from("sentences")
               .insert(sentencesToInsert);
@@ -214,7 +208,7 @@ const SentencesTab = ({ sentences, setSentences, isLoading, fetchData }: Sentenc
     if (!editingSentence) return;
     
     try {
-      await retryWithAuth(async () => {
+      await adminDatabaseOperation(async () => {
         const { error } = await supabase
           .from("sentences")
           .update({
@@ -243,7 +237,7 @@ const SentencesTab = ({ sentences, setSentences, isLoading, fetchData }: Sentenc
 
   const deleteSentence = async (id: string) => {
     try {
-      await retryWithAuth(async () => {
+      await adminDatabaseOperation(async () => {
         const { error } = await supabase.from("sentences").delete().eq("id", id);
         if (error) throw error;
       });
