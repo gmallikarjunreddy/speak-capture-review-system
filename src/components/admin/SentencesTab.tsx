@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +10,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { adminDatabaseOperation } from "@/utils/authUtils";
 
 interface SentencesTabProps {
   sentences: any[];
@@ -42,14 +41,7 @@ const SentencesTab = ({ sentences, setSentences, isLoading, fetchData }: Sentenc
     }
 
     try {
-      await adminDatabaseOperation(async () => {
-        const { error } = await supabase
-          .from("sentences")
-          .insert([{ text: newSentence.text }]);
-          
-        if (error) throw error;
-      });
-
+      await apiClient.addSentence(newSentence.text);
       toast({
         title: "Success",
         description: "Sentence added successfully",
@@ -135,17 +127,9 @@ const SentencesTab = ({ sentences, setSentences, isLoading, fetchData }: Sentenc
 
       for (let i = 0; i < processedLines.length; i += batchSize) {
         const batch = processedLines.slice(i, i + batchSize);
-        const sentencesToInsert = batch.map(line => ({ text: line }));
 
         try {
-          await adminDatabaseOperation(async () => {
-            const { error } = await supabase
-              .from("sentences")
-              .insert(sentencesToInsert);
-
-            if (error) throw error;
-          });
-
+          await Promise.all(batch.map(text => apiClient.addSentence(text)));
           processedCount += batch.length;
           setUploadStatus({ 
             type: 'processing', 
@@ -208,16 +192,9 @@ const SentencesTab = ({ sentences, setSentences, isLoading, fetchData }: Sentenc
     if (!editingSentence) return;
     
     try {
-      await adminDatabaseOperation(async () => {
-        const { error } = await supabase
-          .from("sentences")
-          .update({
-            text: editingSentence.text,
-            is_active: editingSentence.is_active,
-          })
-          .eq("id", editingSentence.id);
-          
-        if (error) throw error;
+      await apiClient.updateSentence(editingSentence.id, {
+        text: editingSentence.text,
+        is_active: editingSentence.is_active,
       });
 
       toast({
@@ -237,11 +214,7 @@ const SentencesTab = ({ sentences, setSentences, isLoading, fetchData }: Sentenc
 
   const deleteSentence = async (id: string) => {
     try {
-      await adminDatabaseOperation(async () => {
-        const { error } = await supabase.from("sentences").delete().eq("id", id);
-        if (error) throw error;
-      });
-
+      await apiClient.deleteSentence(id);
       toast({
         title: "Success",
         description: "Sentence deleted successfully",

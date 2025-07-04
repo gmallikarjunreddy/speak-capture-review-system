@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/lib/api";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -23,12 +24,14 @@ const AdminUsers = () => {
 
   const fetchUsers = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("user_profiles")
-      .select("*")
-      .order("created_at", { ascending: false });
-    setUsers(data || []);
-    setLoading(false);
+    try {
+      const data = await apiClient.getAdminUsers();
+      setUsers(data || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filteredUsers = users.filter((user) => {

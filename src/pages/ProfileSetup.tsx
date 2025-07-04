@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,20 +44,19 @@ const ProfileSetup = () => {
     const fetchProfile = async () => {
       if (!user) return;
       
-      const { data } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
-      if (data) {
-        setFormData({
-          full_name: data.full_name || '',
-          email: data.email || user.email || '',
-          phone: data.phone || '',
-          state: data.state || '',
-          mother_tongue: data.mother_tongue || ''
-        });
+      try {
+        const data = await apiClient.getProfile();
+        if (data) {
+          setFormData({
+            full_name: data.full_name || '',
+            email: data.email || user.email || '',
+            phone: data.phone || '',
+            state: data.state || '',
+            mother_tongue: data.mother_tongue || ''
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
       }
     };
 
@@ -69,29 +69,22 @@ const ProfileSetup = () => {
     
     setLoading(true);
     
-    const { error } = await supabase
-      .from('user_profiles')
-      .upsert({
-        id: user.id,
-        ...formData,
-        updated_at: new Date().toISOString()
-      });
-    
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update profile. Please try again.",
-        variant: "destructive"
-      });
-    } else {
+    try {
+      await apiClient.updateProfile(formData);
       toast({
         title: "Profile Updated",
         description: "Your profile has been successfully updated!"
       });
       navigate('/dashboard');
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   return (

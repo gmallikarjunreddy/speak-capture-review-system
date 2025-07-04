@@ -95,6 +95,26 @@ class ApiClient {
     return this.request('/sentences');
   }
 
+  async addSentence(text: string) {
+    return this.request('/sentences', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+  }
+
+  async updateSentence(id: string, data: any) {
+    return this.request(`/sentences/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteSentence(id: string) {
+    return this.request(`/sentences/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Recording sessions methods
   async createRecordingSession(totalSentences: number) {
     return this.request('/recording-sessions', {
@@ -137,6 +157,10 @@ class ApiClient {
     }
 
     return response.json();
+  }
+
+  async getUserRecordings(userId: string) {
+    return this.request(`/recordings/user/${userId}`);
   }
 
   // Admin methods

@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Shield } from 'lucide-react';
 
 interface AdminAuthProps {
-  onAdminLogin: (isAdmin: boolean) => void;
+  onAdminLogin: (username: string, password: string) => Promise<void>;
 }
 
 const AdminAuth = ({ onAdminLogin }: AdminAuthProps) => {
@@ -16,37 +16,25 @@ const AdminAuth = ({ onAdminLogin }: AdminAuthProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Admin credentials (in production, these should be environment variables)
-  const ADMIN_CREDENTIALS = {
-    username: 'admin',
-    password: 'admin123'
-  };
-
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    // Simple credential check
-    if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-      // Store admin session in localStorage
-      localStorage.setItem('isAdmin', 'true');
-      localStorage.setItem('adminLoginTime', Date.now().toString());
-      
+    if (!username || !password) {
       toast({
-        title: "Admin Access Granted",
-        description: "Welcome to the admin panel"
-      });
-      
-      onAdminLogin(true);
-    } else {
-      toast({
-        title: "Access Denied",
-        description: "Invalid admin credentials",
+        title: "Error",
+        description: "Please enter username and password",
         variant: "destructive"
       });
+      return;
     }
-    
-    setIsLoading(false);
+
+    setIsLoading(true);
+    try {
+      await onAdminLogin(username, password);
+    } catch (error) {
+      // Error handling is done in the parent component
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

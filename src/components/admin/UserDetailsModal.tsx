@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/lib/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,9 +20,7 @@ interface Recording {
   status: string;
   recorded_at: string;
   duration_seconds: number;
-  sentences: {
-    text: string;
-  } | null;
+  sentence_text?: string;
 }
 
 const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
@@ -56,56 +55,13 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
     
     setIsLoading(true);
     try {
-      const { data: recordingsData, error } = await supabase
-        .from('recordings')
-        .select(`
-          id,
-          audio_url,
-          status,
-          recorded_at,
-          duration_seconds,
-          sentence_id
-        `)
-        .eq('user_id', user.id)
-        .order('recorded_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching user recordings:', error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch user recordings",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Enrich recordings with sentence data
-      const enrichedRecordings = await Promise.all(
-        (recordingsData || []).map(async (recording) => {
-          let sentence = null;
-          
-          if (recording.sentence_id) {
-            const { data: sentenceData } = await supabase
-              .from('sentences')
-              .select('text')
-              .eq('id', recording.sentence_id)
-              .maybeSingle();
-            sentence = sentenceData;
-          }
-          
-          return {
-            ...recording,
-            sentences: sentence
-          };
-        })
-      );
-
-      setRecordings(enrichedRecordings);
+      const recordingsData = await apiClient.getUserRecordings(user.id);
+      setRecordings(recordingsData || []);
     } catch (error) {
-      console.error('Unexpected error:', error);
+      console.error('Error fetching user recordings:', error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred",
+        description: "Failed to fetch user recordings",
         variant: "destructive"
       });
     } finally {
@@ -140,30 +96,8 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
         return;
       }
 
-      // Download the audio file as a blob
-      const { data: blob, error } = await supabase.storage
-        .from('recordings')
-        .download(recording.audio_url);
-
-      if (error) {
-        toast({
-          title: "Error fetching audio",
-          description: error.message,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (!blob) {
-        toast({
-          title: "Error",
-          description: "Could not find the audio file.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const audioUrl = URL.createObjectURL(blob);
+      // For local files, we'll try to fetch directly from the server
+      const audioUrl = `http://localhost:3001/uploads/${recording.audio_url}`;
       const audio = new Audio(audioUrl);
       setCurrentAudio(audio);
       setPlayingAudio(recording.id);
@@ -171,7 +105,6 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
       audio.onended = () => {
         setPlayingAudio(null);
         setCurrentAudio(null);
-        URL.revokeObjectURL(audioUrl); // Clean up
       };
 
       audio.onerror = () => {
@@ -182,7 +115,6 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
         });
         setPlayingAudio(null);
         setCurrentAudio(null);
-        URL.revokeObjectURL(audioUrl); // Clean up
       };
 
       await audio.play();
@@ -302,8 +234,8 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
                             {generateReadableAudioId(recording)}
                           </TableCell>
                           <TableCell className="max-w-md">
-                            <div className="truncate" title={recording.sentences?.text}>
-                              {recording.sentences?.text || 'Deleted sentence'}
+                            <div className="truncate" title={recording.sentence_text}>
+                              {recording.sentence_text || 'Deleted sentence'}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -365,8 +297,8 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
                             {generateReadableAudioId(recording)}
                           </TableCell>
                           <TableCell className="max-w-md">
-                            <div className="truncate" title={recording.sentences?.text}>
-                              {recording.sentences?.text || 'Deleted sentence'}
+                            <div className="truncate" title={recording.sentence_text}>
+                              {recording.sentence_text || 'Deleted sentence'}
                             </div>
                           </TableCell>
                           <TableCell>
