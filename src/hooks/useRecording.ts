@@ -1,6 +1,7 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -26,16 +27,16 @@ export const useRecording = (sentences: any[]) => {
   useEffect(() => {
     const fetchUsername = async () => {
       if (!user) return;
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('full_name')
-        .eq('id', user.id)
-        .maybeSingle();
-      let name = data?.full_name;
-      if (!name) {
-        name = user.email ? user.email.split('@')[0] : user.id;
+      try {
+        const profile = await apiClient.getProfile();
+        let name = profile.full_name;
+        if (!name) {
+          name = user.email ? user.email.split('@')[0] : user.id;
+        }
+        setUsername(name.replace(/\s+/g, '_'));
+      } catch (error) {
+        console.error('Error fetching username:', error);
       }
-      setUsername(name.replace(/\s+/g, '_'));
     };
     if (user) fetchUsername();
   }, [user]);
@@ -44,28 +45,15 @@ export const useRecording = (sentences: any[]) => {
     const createSession = async (totalSentences: number) => {
       if (!user) return;
       
-      const { data, error } = await supabase
-        .from('recording_sessions')
-        .insert({
-          user_id: user.id,
-          total_sentences: totalSentences,
-          completed_sentences: 0,
-          status: 'in_progress'
-        })
-        .select()
-        .single();
-      
-      if (error) {
+      try {
+        const session = await apiClient.createRecordingSession(totalSentences);
+        setSessionId(session.id);
+      } catch (error: any) {
         toast({
           title: "Error Creating Session",
           description: error.message,
           variant: "destructive"
         });
-        return;
-      }
-
-      if (data) {
-        setSessionId(data.id);
       }
     };
     if (sentences.length > 0 && user && !sessionId) {
@@ -147,60 +135,23 @@ export const useRecording = (sentences: any[]) => {
     if (!audioBlob || !user || !sessionId || !username) return false;
 
     try {
-      const sentenceNo = currentIndex + 1;
-      const recId = `${username}_${sentenceNo}_${Date.now()}`;
-      const fileName = `${recId}.webm`;
-      console.log(`[saveRecording] Generated recId: ${recId}`);
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('recordings')
-        .upload(fileName, audioBlob, { upsert: true });
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        toast({
-          title: "Upload Error",
-          description: "Failed to upload recording",
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      const recordingData = {
-        id: recId,
-        user_id: user.id,
-        sentence_id: sentences[currentIndex].id,
-        audio_url: uploadData.path,
-        status: status,
-        attempt_number: status === 'rejected' ? rejectedCount + 1 : 1,
-        duration_seconds: 0
-      };
-      console.log('[saveRecording] Inserting data:', recordingData);
-
-      const { error: dbError } = await supabase
-        .from('recordings')
-        .insert(recordingData);
-
-      if (dbError) {
-        console.error('Database error:', dbError);
-        toast({
-          title: "Database Error",
-          description: "Failed to save recording metadata",
-          variant: "destructive"
-        });
-        return false;
-      }
+      const attemptNum = status === 'rejected' ? rejectedCount + 1 : 1;
+      await apiClient.uploadRecording(
+        audioBlob,
+        sentences[currentIndex].id,
+        status,
+        attemptNum
+      );
 
       if (status === 'rejected') {
         setRejectedCount(rejectedCount + 1);
       }
 
       return true;
-    } catch (error) {
-      console.error('Save recording error:', error);
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Something went wrong while saving",
+        description: error.message || "Something went wrong while saving",
         variant: "destructive"
       });
       return false;
@@ -211,14 +162,15 @@ export const useRecording = (sentences: any[]) => {
     const success = await saveRecording('accepted');
     if (!success || !sessionId) return;
     
-    await supabase
-      .from('recording_sessions')
-      .update({ 
+    try {
+      await apiClient.updateRecordingSession(sessionId, {
         completed_sentences: completedCount + 1,
         status: completedCount + 1 >= sentences.length ? 'completed' : 'in_progress',
         completed_at: completedCount + 1 >= sentences.length ? new Date().toISOString() : null
-      })
-      .eq('id', sessionId);
+      });
+    } catch (error) {
+      console.error('Error updating session:', error);
+    }
     
     setCompletedCount(completedCount + 1);
     

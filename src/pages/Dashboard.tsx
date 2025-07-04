@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -21,17 +21,16 @@ const Dashboard = () => {
     const fetchProfile = async () => {
       if (!user) return;
       
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
-      if (data) {
+      try {
+        const data = await apiClient.getProfile();
         setProfile(data);
-        setHasProfile(true);
+        // Check if profile has required fields
+        setHasProfile(!!(data.full_name && data.phone && data.state && data.mother_tongue));
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchProfile();

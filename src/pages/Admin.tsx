@@ -1,19 +1,18 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/lib/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AdminHeader from '@/components/admin/AdminHeader';
 import SentencesTab from '@/components/admin/SentencesTab';
 import UsersTab from '@/components/admin/UsersTab';
 import RecordingsTab from '@/components/admin/RecordingsTab';
 import AdminAuth from '@/components/AdminAuth';
-import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { useToast } from '@/hooks/use-toast';
 import UserDetailsModal from '@/components/admin/UserDetailsModal';
-import { adminDatabaseOperation } from '@/utils/authUtils';
 
 const Admin = () => {
-  const { isAdmin, loading, adminLogin, adminLogout } = useAdminAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [sentences, setSentences] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [recordings, setRecordings] = useState<any[]>([]);
@@ -26,6 +25,19 @@ const Admin = () => {
   const { toast } = useToast();
 
   useEffect(() => {
+    const checkAdminAuth = () => {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        // Check if token is admin token (you might want to validate this server-side)
+        setIsAdmin(true);
+      }
+      setLoading(false);
+    };
+
+    checkAdminAuth();
+  }, []);
+
+  useEffect(() => {
     if (isAdmin) {
       fetchData();
     }
@@ -34,85 +46,16 @@ const Admin = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch sentences using admin operation
-      const sentencesData = await adminDatabaseOperation(async () => {
-        const { data, error } = await supabase
-          .from('sentences')
-          .select('*')
-          .order('created_at', { ascending: false });
-        if (error) throw error;
-        return data;
-      });
+      // Fetch all admin data
+      const [sentencesData, usersData, recordingsData] = await Promise.all([
+        apiClient.getAdminSentences(),
+        apiClient.getAdminUsers(),
+        apiClient.getAdminRecordings()
+      ]);
+
       setSentences(sentencesData || []);
-
-      // Fetch user profiles using admin operation
-      const usersData = await adminDatabaseOperation(async () => {
-        const { data, error } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .order('created_at', { ascending: false });
-        if (error) throw error;
-        return data;
-      });
       setUsers(usersData || []);
-
-      // Fetch all recordings and enrich using admin operation
-      const recordingsData = await adminDatabaseOperation(async () => {
-        const { data, error } = await supabase
-          .from('recordings')
-          .select('*')
-          .order('recorded_at', { ascending: false });
-        if (error) throw error;
-        return data;
-      });
-
-      const enrichedRecordings = await Promise.all(
-        (recordingsData || []).map(async (recording) => {
-          let userProfile = null;
-          let sentence = null;
-          
-          if (recording.user_id) {
-            try {
-              const userData = await adminDatabaseOperation(async () => {
-                const { data, error } = await supabase
-                  .from('user_profiles')
-                  .select('full_name, email')
-                  .eq('id', recording.user_id)
-                  .maybeSingle();
-                if (error) throw error;
-                return data;
-              });
-              userProfile = userData;
-            } catch (error) {
-              console.error("Error fetching user profile:", error);
-            }
-          }
-          
-          if (recording.sentence_id) {
-            try {
-              const sentenceData = await adminDatabaseOperation(async () => {
-                const { data, error } = await supabase
-                  .from('sentences')
-                  .select('text')
-                  .eq('id', recording.sentence_id)
-                  .maybeSingle();
-                if (error) throw error;
-                return data;
-              });
-              sentence = sentenceData;
-            } catch (error) {
-              console.error("Error fetching sentence:", error);
-            }
-          }
-          
-          return {
-            ...recording,
-            user_profiles: userProfile,
-            sentences: sentence,
-          };
-        })
-      );
-      setRecordings(enrichedRecordings);
+      setRecordings(recordingsData || []);
     } catch (error: any) {
       console.error("Error fetching admin data:", error);
       toast({
@@ -123,6 +66,44 @@ const Admin = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleAdminLogin = async (username: string, password: string) => {
+    try {
+      const { data, error } = await apiClient.adminSignIn(username, password);
+      if (error) {
+        toast({
+          title: "Login Failed",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setIsAdmin(true);
+      localStorage.setItem('adminLoginTime', Date.now().toString());
+      toast({
+        title: "Success",
+        description: "Admin login successful",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Login Failed",
+        description: error.message || "Invalid credentials",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const adminLogout = async () => {
+    try {
+      await apiClient.signOut();
+    } catch (error) {
+      console.error("Error during admin logout:", error);
+    }
+    
+    localStorage.removeItem('adminLoginTime');
+    setIsAdmin(false);
   };
 
   const handleUserClick = (user: any) => {
@@ -139,7 +120,7 @@ const Admin = () => {
   }
 
   if (!isAdmin) {
-    return <AdminAuth onAdminLogin={adminLogin} />;
+    return <AdminAuth onAdminLogin={handleAdminLogin} />;
   }
 
   return (
