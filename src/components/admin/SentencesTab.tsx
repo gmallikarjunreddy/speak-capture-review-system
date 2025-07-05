@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { apiClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -213,14 +212,20 @@ const SentencesTab = ({ sentences, setSentences, isLoading, fetchData }: Sentenc
   };
 
   const deleteSentence = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this sentence? If it has recordings, it will be marked as inactive instead.')) {
+      return;
+    }
+
     try {
+      console.log('Attempting to delete sentence:', id);
       await apiClient.deleteSentence(id);
       toast({
         title: "Success",
-        description: "Sentence deleted successfully",
+        description: "Sentence processed successfully",
       });
       fetchData();
     } catch (error: any) {
+      console.error('Delete sentence error:', error);
       toast({
         title: "Error",
         description: `Failed to delete sentence: ${error.message}`,
@@ -331,6 +336,7 @@ const SentencesTab = ({ sentences, setSentences, isLoading, fetchData }: Sentenc
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>ID</TableHead>
                   <TableHead>Text</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
@@ -339,6 +345,7 @@ const SentencesTab = ({ sentences, setSentences, isLoading, fetchData }: Sentenc
               <TableBody>
                 {sentences.map((sentence) => (
                   <TableRow key={sentence.id}>
+                    <TableCell>#{sentence.id}</TableCell>
                     <TableCell className="max-w-md">
                       {editingSentence?.id === sentence.id ? (
                         <Textarea
@@ -396,8 +403,8 @@ const SentencesTab = ({ sentences, setSentences, isLoading, fetchData }: Sentenc
                             </Button>
                             <Button
                               size="sm"
-                              variant="outline"
-                              onClick={() => deleteSentence(sentence.id)}
+                              variant="destructive"
+                              onClick={() => deleteSentence(sentence.id.toString())}
                               disabled={isLoading}
                             >
                               <Trash2 className="w-4 h-4" />

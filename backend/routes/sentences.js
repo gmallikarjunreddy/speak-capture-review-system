@@ -50,8 +50,20 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    await pool.query('DELETE FROM sentences WHERE id = $1', [id]);
-    res.json({ message: 'Sentence deleted successfully' });
+    
+    // First, check if there are any recordings using this sentence
+    const recordingsCheck = await pool.query('SELECT COUNT(*) FROM recordings WHERE sentence_id = $1', [id]);
+    const recordingCount = parseInt(recordingsCheck.rows[0].count);
+    
+    if (recordingCount > 0) {
+      // Instead of deleting, mark as inactive
+      await pool.query('UPDATE sentences SET is_active = false WHERE id = $1', [id]);
+      res.json({ message: 'Sentence marked as inactive due to existing recordings' });
+    } else {
+      // Safe to delete
+      await pool.query('DELETE FROM sentences WHERE id = $1', [id]);
+      res.json({ message: 'Sentence deleted successfully' });
+    }
   } catch (error) {
     console.error('Sentence deletion error:', error);
     res.status(500).json({ error: 'Internal server error' });

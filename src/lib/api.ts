@@ -1,4 +1,3 @@
-
 const API_BASE_URL = 'http://localhost:3001/api';
 
 class ApiClient {
@@ -28,6 +27,8 @@ class ApiClient {
     if (this.token) {
       headers.Authorization = `Bearer ${this.token}`;
     }
+
+    console.log('Making request to:', url, 'with method:', options.method || 'GET');
 
     const response = await fetch(url, {
       ...options,
@@ -110,6 +111,7 @@ class ApiClient {
   }
 
   async deleteSentence(id: string) {
+    console.log('Deleting sentence with ID:', id);
     return this.request(`/sentences/${id}`, {
       method: 'DELETE',
     });
