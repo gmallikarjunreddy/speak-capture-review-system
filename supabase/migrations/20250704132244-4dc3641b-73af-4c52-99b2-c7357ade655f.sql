@@ -16,9 +16,9 @@ CREATE TABLE public.user_profiles (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create sentences table
+-- Create sentences table with integer primary key
 CREATE TABLE public.sentences (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id SERIAL PRIMARY KEY,
   text TEXT NOT NULL,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -29,7 +29,7 @@ CREATE TABLE public.sentences (
 CREATE TABLE public.recordings (
   id TEXT PRIMARY KEY,
   user_id UUID REFERENCES public.user_profiles(id) ON DELETE CASCADE,
-  sentence_id UUID REFERENCES public.sentences(id),
+  sentence_id INTEGER REFERENCES public.sentences(id),
   audio_url TEXT NOT NULL,
   status TEXT CHECK (status IN ('accepted', 'rejected')) DEFAULT 'accepted',
   attempt_number INTEGER DEFAULT 1,

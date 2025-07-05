@@ -7,7 +7,7 @@ const router = express.Router();
 // Get all active sentences
 router.get('/', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM sentences WHERE is_active = true ORDER BY created_at');
+    const result = await pool.query('SELECT * FROM sentences WHERE is_active = true ORDER BY id');
     res.json(result.rows);
   } catch (error) {
     console.error('Sentences fetch error:', error);

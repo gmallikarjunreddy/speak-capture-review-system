@@ -26,6 +26,29 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+// Generate audio ID based on status and attempt count
+const generateAudioId = async (email, sentenceId, status) => {
+  const baseEmail = email.split('@')[0];
+  
+  if (status === 'accepted') {
+    return `${baseEmail}_${sentenceId}`;
+  } else {
+    // For rejected recordings, check how many rejections exist for this sentence
+    const existingRejections = await pool.query(
+      'SELECT COUNT(*) as count FROM recordings WHERE user_id = (SELECT id FROM user_profiles WHERE email = $1) AND sentence_id = $2 AND status = $3',
+      [email, sentenceId, 'rejected']
+    );
+    
+    const rejectionCount = parseInt(existingRejections.rows[0].count) + 1;
+    
+    if (rejectionCount === 1) {
+      return `${baseEmail}_rejected_${sentenceId}`;
+    } else {
+      return `${baseEmail}_rejected_${sentenceId}-${rejectionCount}`;
+    }
+  }
+};
+
 // Upload recording
 router.post('/', authenticateToken, upload.single('audio'), async (req, res) => {
   try {
@@ -36,7 +59,14 @@ router.post('/', authenticateToken, upload.single('audio'), async (req, res) => 
       return res.status(400).json({ error: 'No audio file provided' });
     }
 
-    const recordingId = `${req.user.userId}_${sentence_id}_${Date.now()}`;
+    // Get user email for audio ID generation
+    const userResult = await pool.query('SELECT email FROM user_profiles WHERE id = $1', [req.user.userId]);
+    if (userResult.rows.length === 0) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+
+    const userEmail = userResult.rows[0].email;
+    const recordingId = await generateAudioId(userEmail, sentence_id, status);
 
     const result = await pool.query(
       'INSERT INTO recordings (id, user_id, sentence_id, audio_url, status, attempt_number) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',

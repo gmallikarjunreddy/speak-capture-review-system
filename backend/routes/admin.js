@@ -36,7 +36,7 @@ router.post('/auth', async (req, res) => {
 // Get all sentences (admin)
 router.get('/sentences', authenticateAdmin, async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM sentences ORDER BY created_at DESC');
+    const result = await pool.query('SELECT * FROM sentences ORDER BY id DESC');
     res.json(result.rows);
   } catch (error) {
     console.error('Admin sentences fetch error:', error);
@@ -59,7 +59,9 @@ router.get('/users', authenticateAdmin, async (req, res) => {
 router.get('/recordings', authenticateAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT r.*, u.full_name, u.email, s.text as sentence_text 
+      SELECT r.*, u.full_name, u.email, s.text as sentence_text,
+             jsonb_build_object('full_name', u.full_name, 'email', u.email) as user_profiles,
+             jsonb_build_object('text', s.text) as sentences
       FROM recordings r
       LEFT JOIN user_profiles u ON r.user_id = u.id
       LEFT JOIN sentences s ON r.sentence_id = s.id

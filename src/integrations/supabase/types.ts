@@ -46,7 +46,7 @@ export type Database = {
           duration_seconds: number | null
           id: string
           recorded_at: string | null
-          sentence_id: string | null
+          sentence_id: number | null
           status: string | null
           user_id: string | null
         }
@@ -56,7 +56,7 @@ export type Database = {
           duration_seconds?: number | null
           id: string
           recorded_at?: string | null
-          sentence_id?: string | null
+          sentence_id?: number | null
           status?: string | null
           user_id?: string | null
         }
@@ -66,7 +66,7 @@ export type Database = {
           duration_seconds?: number | null
           id?: string
           recorded_at?: string | null
-          sentence_id?: string | null
+          sentence_id?: number | null
           status?: string | null
           user_id?: string | null
         }
@@ -84,25 +84,33 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by: string | null
-          id: string
+          id: number
           is_active: boolean | null
           text: string
         }
         Insert: {
           created_at?: string | null
           created_by?: string | null
-          id?: string
+          id?: number
           is_active?: boolean | null
           text: string
         }
         Update: {
           created_at?: string | null
           created_by?: string | null
-          id?: string
+          id?: number
           is_active?: boolean | null
           text?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sentences_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_profiles: {
         Row: {

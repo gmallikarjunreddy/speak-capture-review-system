@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/api';
@@ -138,7 +137,7 @@ export const useRecording = (sentences: any[]) => {
       const attemptNum = status === 'rejected' ? rejectedCount + 1 : 1;
       await apiClient.uploadRecording(
         audioBlob,
-        sentences[currentIndex].id,
+        sentences[currentIndex].id.toString(),
         status,
         attemptNum
       );

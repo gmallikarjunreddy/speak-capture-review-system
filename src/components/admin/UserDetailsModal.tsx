@@ -69,17 +69,6 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
     }
   };
 
-  const generateReadableAudioId = (recording: Recording) => {
-    // New ID format is username_sentence-number_timestamp
-    // We'll display the user-friendly part they requested.
-    const parts = recording.id.split('_');
-    if (parts.length >= 2) {
-      return `${parts[0]}_${parts[1]}`;
-    }
-    // Fallback for any old or different ID formats
-    return recording.id.split('-')[0];
-  };
-
   const handlePlayAudio = async (recording: Recording) => {
     try {
       // Stop current audio if playing
@@ -96,8 +85,10 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
         return;
       }
 
-      // For local files, we'll try to fetch directly from the server
-      const audioUrl = `http://localhost:3001/uploads/${recording.audio_url}`;
+      // Extract filename from audio_url (remove /uploads/ prefix)
+      const filename = recording.audio_url.replace('/uploads/', '');
+      const audioUrl = `http://localhost:3001/uploads/${filename}`;
+      
       const audio = new Audio(audioUrl);
       setCurrentAudio(audio);
       setPlayingAudio(recording.id);
@@ -108,6 +99,7 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
       };
 
       audio.onerror = () => {
+        console.error('Audio error for URL:', audioUrl);
         toast({
           title: "Error",
           description: "Failed to play audio. The file might be missing or corrupt.",
@@ -127,17 +119,6 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
       });
       setPlayingAudio(null);
       setCurrentAudio(null);
-    }
-  };
-
-  const stopAudio = () => {
-    if (currentAudio) {
-      currentAudio.pause();
-      if (currentAudio.src.startsWith('blob:')) {
-        URL.revokeObjectURL(currentAudio.src);
-      }
-      setCurrentAudio(null);
-      setPlayingAudio(null);
     }
   };
 
@@ -231,7 +212,7 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
                       {acceptedRecordings.map((recording) => (
                         <TableRow key={recording.id}>
                           <TableCell className="font-mono text-sm">
-                            {generateReadableAudioId(recording)}
+                            {recording.id}
                           </TableCell>
                           <TableCell className="max-w-md">
                             <div className="truncate" title={recording.sentence_text}>
@@ -294,7 +275,7 @@ const UserDetailsModal = ({ user, isOpen, onClose }: UserDetailsModalProps) => {
                       {rejectedRecordings.map((recording) => (
                         <TableRow key={recording.id}>
                           <TableCell className="font-mono text-sm">
-                            {generateReadableAudioId(recording)}
+                            {recording.id}
                           </TableCell>
                           <TableCell className="max-w-md">
                             <div className="truncate" title={recording.sentence_text}>
